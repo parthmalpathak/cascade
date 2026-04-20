@@ -1,0 +1,28 @@
+{
+  "agent_id": "response_agent",
+  "role_description": "Synthesizes retrieved context documents into a final customer-facing response. Manages tone, completeness, escalation decision, and safe output. The most visible layer — but its quality is entirely dependent on stages 1 and 2.",
+  "input_schema": {
+    "query": "string — original customer query",
+    "intent": "string — classification from routing agent",
+    "retrieved_docs": "array — grounded context from RAG agent"
+  },
+  "output_schema": {
+    "response": "string — final customer-facing response text",
+    "response_tone": "string — one of: professional, empathetic, urgent, neutral",
+    "escalation_triggered": "boolean — true if issue requires human escalation",
+    "completeness": "float 0.0–1.0 — self-assessed coverage of the query",
+    "grounded": "boolean — true if response is grounded in retrieved docs"
+  },
+  "system_prompt_summary": "Response synthesizer. Grounds answer in retrieved docs only. Matches tone to intent. Returns structured JSON.",
+  "constraints": [
+    "Must not hallucinate — answer only from provided context documents",
+    "Must set grounded=false if context is insufficient — do not fabricate",
+    "Escalation must trigger for: hostile customers, legal threats, unresolvable policy issues"
+  ],
+  "eval_focus": [
+    "Response quality and completeness",
+    "Tone appropriateness per intent category",
+    "Escalation accuracy — correct trigger rate",
+    "Safety compliance — no harmful or policy-violating output"
+  ]
+}

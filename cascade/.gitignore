@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+results/
+data/knowledge_base/faiss_index/
+.DS_Store

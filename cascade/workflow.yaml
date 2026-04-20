@@ -1,0 +1,33 @@
+# workflow.yaml — declares the agent chain for this pipeline
+# The Query Agent reads this file to understand how agents are connected
+# before generating the benchmark test suite.
+#
+# V1 supports linear chains only. Branching workflows are V2.
+
+name: enterprise-customer-support
+description: "3-stage customer support pipeline: intent classification → knowledge retrieval → response generation"
+version: "1.0"
+
+agents:
+  - id: routing_agent
+    manifest: manifests/routing_agent.json
+    position: 1
+
+  - id: rag_agent
+    manifest: manifests/rag_agent.json
+    position: 2
+
+  - id: response_agent
+    manifest: manifests/response_agent.json
+    position: 3
+
+chain:
+  entry: routing_agent
+  flow:
+    - from: routing_agent
+      to: rag_agent
+      passes: [intent, routing_confidence, routing_rationale]
+    - from: rag_agent
+      to: response_agent
+      passes: [retrieved_docs, citations, retrieval_scores]
+  terminal: response_agent

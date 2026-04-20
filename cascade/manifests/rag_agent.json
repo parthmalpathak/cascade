@@ -1,0 +1,25 @@
+{
+  "agent_id": "rag_agent",
+  "role_description": "Takes the classified query and intent, searches a FAISS vector knowledge base, and returns grounded context documents. This is where hallucination is either prevented or introduced — retrieval quality determines downstream faithfulness.",
+  "input_schema": {
+    "query": "string — original customer query",
+    "intent": "string — classification from routing agent"
+  },
+  "output_schema": {
+    "retrieved_docs": "array — list of {content, title, category, doc_id, score}",
+    "citations": "array of strings — document titles used",
+    "retrieval_scores": "array of floats — similarity scores per retrieved doc",
+    "retrieval_query": "string — the augmented query sent to the vector store"
+  },
+  "system_prompt_summary": "Retrieval node. Augments query with intent label, searches FAISS index, returns top-K grounded documents.",
+  "constraints": [
+    "Must return only documents from the knowledge base — no hallucinated content",
+    "top_k default is 4, configurable",
+    "Must prefix retrieval query with intent label for intent-aware search"
+  ],
+  "eval_focus": [
+    "Retrieval precision — are returned docs relevant to the query?",
+    "Faithfulness — does retrieved content actually answer the question?",
+    "Hallucination rate — does the agent fabricate document content?"
+  ]
+}

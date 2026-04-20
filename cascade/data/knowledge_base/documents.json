@@ -1,0 +1,92 @@
+[
+  {
+    "id": "billing-001",
+    "category": "billing",
+    "title": "Invoice Dispute Process",
+    "content": "To dispute an invoice charge, contact billing support within 30 days of the statement date. Provide your account number, the charge amount, and a brief description of why you believe the charge is incorrect. Our team will investigate within 5 business days and issue a credit if the dispute is valid."
+  },
+  {
+    "id": "billing-002",
+    "category": "billing",
+    "title": "Payment Methods Accepted",
+    "content": "We accept Visa, Mastercard, American Express, ACH bank transfer, and PayPal. Credit card payments are processed immediately. ACH transfers take 3–5 business days to clear. Net-30 invoicing is available for enterprise accounts with approved credit."
+  },
+  {
+    "id": "billing-003",
+    "category": "billing",
+    "title": "Billing Cycle and Statement Dates",
+    "content": "Billing cycles run monthly from the 1st to the last day of each month. Statements are generated on the 1st of the following month. Pro-rated charges appear on your first statement if you started mid-cycle. Annual plans are billed once on the anniversary date."
+  },
+  {
+    "id": "refund-001",
+    "category": "refund",
+    "title": "Refund Policy — Standard",
+    "content": "Refunds are available within 14 days of the original purchase for unused services. After 14 days, refunds are issued as account credits only. To request a refund, submit a ticket with your order number and reason. Refunds are processed within 7 business days and returned to the original payment method."
+  },
+  {
+    "id": "refund-002",
+    "category": "refund",
+    "title": "Refund Policy — Annual Plans",
+    "content": "Annual plan refunds are calculated on a pro-rated basis for unused months. Setup fees and one-time charges are non-refundable. If you cancel within the first 30 days of an annual plan, you are eligible for a full refund minus any usage charges already incurred."
+  },
+  {
+    "id": "technical-001",
+    "category": "technical",
+    "title": "API Rate Limits",
+    "content": "API rate limits are enforced per API key. Free tier: 60 requests/minute, 1,000 requests/day. Pro tier: 600 requests/minute, 50,000 requests/day. Enterprise tier: custom limits. If you hit a rate limit, you will receive a 429 status code. Implement exponential backoff with a minimum 1-second delay between retries."
+  },
+  {
+    "id": "technical-002",
+    "category": "technical",
+    "title": "Common Error Codes",
+    "content": "Error 401: Invalid or expired API key — regenerate your key in the dashboard. Error 403: Insufficient permissions — check your account tier and scope settings. Error 429: Rate limit exceeded — see rate limit documentation. Error 500: Server error — retry after 30 seconds; if persistent, contact support. Error 503: Service unavailable — check status.example.com for outage updates."
+  },
+  {
+    "id": "technical-003",
+    "category": "technical",
+    "title": "Integration Troubleshooting",
+    "content": "Before contacting support, check: (1) your API key is active and has the correct scopes, (2) your request headers include Content-Type: application/json, (3) your payload matches the current API schema (v2), (4) you are hitting the correct endpoint (api.example.com, not legacy.api.example.com). Logs are available in the dashboard under Settings > API Logs for the last 7 days."
+  },
+  {
+    "id": "policy-001",
+    "category": "policy",
+    "title": "Terms of Service — Data Retention",
+    "content": "User data is retained for 90 days after account cancellation, then permanently deleted. Customers may request immediate deletion by submitting a data deletion request through the privacy portal. Backup copies are purged within 30 days of the deletion request. Data exports must be requested before cancellation."
+  },
+  {
+    "id": "policy-002",
+    "category": "policy",
+    "title": "Acceptable Use Policy",
+    "content": "Prohibited uses include: automated scraping at scale, reselling API access to third parties, generating content that violates our content policy, and using the service to circumvent other platforms' terms. Violations may result in immediate account suspension. Repeated violations result in permanent bans with no refund."
+  },
+  {
+    "id": "policy-003",
+    "category": "policy",
+    "title": "SLA and Uptime Guarantee",
+    "content": "Enterprise customers are covered by a 99.9% monthly uptime SLA. If uptime falls below this threshold, affected customers are eligible for service credits: 10% credit for 99.0–99.9% uptime, 25% credit for 95.0–99.0%, 100% credit for below 95%. Credits must be requested within 30 days of the incident. Free and Pro tier users are not covered by an SLA."
+  },
+  {
+    "id": "escalation-001",
+    "category": "escalation",
+    "title": "Escalation Triggers and Process",
+    "content": "Issues are escalated to Tier 2 support when: (1) the issue has been open more than 72 hours without resolution, (2) the customer requests manager involvement, (3) legal or compliance risk is mentioned, (4) the issue affects more than 100 accounts. Escalated tickets are reviewed within 4 business hours. Customers are notified of escalation status by email."
+  },
+  {
+    "id": "escalation-002",
+    "category": "escalation",
+    "title": "Legal and Compliance Inquiries",
+    "content": "For legal inquiries, cease-and-desist notices, or regulatory requests, contact legal@example.com directly. Do not resolve these through standard support channels. Legal team response time is 2 business days. For law enforcement requests, follow the dedicated government request process documented in our Law Enforcement Guidelines."
+  },
+  {
+    "id": "billing-004",
+    "category": "billing",
+    "title": "Account Credits and Promotions",
+    "content": "Account credits are applied automatically to the next billing cycle. Credits do not expire and carry over month-to-month. Promotional credits issued during signup are applied before paid credits. Credits cannot be converted to cash. If your account has credits and you cancel, any remaining credit balance is forfeited."
+  },
+  {
+    "id": "technical-004",
+    "category": "technical",
+    "title": "Webhook Configuration and Failures",
+    "content": "Webhooks are retried up to 5 times with exponential backoff (1s, 2s, 4s, 8s, 16s delays) if your endpoint returns a non-200 status. After 5 failures, the webhook is disabled and you will receive an email alert. Re-enable disabled webhooks in Settings > Webhooks. Webhook logs are available for 30 days. For HTTPS, your endpoint must present a valid TLS certificate."
+  }
+]

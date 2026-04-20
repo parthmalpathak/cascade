@@ -1,0 +1,24 @@
+{
+  "agent_id": "routing_agent",
+  "role_description": "Classifies the intent of an incoming customer query into one of five categories and routes it to the correct downstream handler. First decision gate in the pipeline — misclassification here corrupts all downstream stages.",
+  "input_schema": {
+    "query": "string — raw customer query text"
+  },
+  "output_schema": {
+    "intent": "string — one of: billing, technical, policy, refund, escalation",
+    "routing_confidence": "float 0.0–1.0 — model confidence in classification",
+    "routing_rationale": "string — one-sentence explanation of the classification",
+    "routing_ambiguous": "boolean — true if query could belong to multiple intents"
+  },
+  "system_prompt_summary": "Intent classifier. Maps free-text query to one of 5 fixed labels. Returns structured JSON.",
+  "constraints": [
+    "Must return exactly one intent label — no multi-label output",
+    "Must return valid JSON — fallback to escalation on parse failure",
+    "Temperature must be 0 for deterministic routing"
+  ],
+  "eval_focus": [
+    "Classification accuracy on unambiguous queries",
+    "Graceful handling of ambiguous or multi-intent queries",
+    "Edge case handling: empty input, non-English, very short queries"
+  ]
+}

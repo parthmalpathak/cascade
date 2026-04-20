@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AgentBench — Project Map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #F9FAFB; min-height: 100vh; padding: 28px 16px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const C = {
+  blue: "#2563EB", purple: "#7C3AED", green: "#059669",
+  orange: "#D97706", red: "#DC2626", gray: "#6B7280",
+  lBlue: "#EFF6FF", lPurple: "#F5F3FF", lGreen: "#ECFDF5",
+  dark: "#111827", border: "#E5E7EB",
+};
+
+function Tag({ color, children }) {
+  return (
+    <span style={{ background: color + "22", color, fontWeight: 700, fontSize: 11,
+      padding: "3px 8px", borderRadius: 4 }}>{children}</span>
+  );
+}
+
+function SectionTitle({ children }) {
+  return <div style={{ fontWeight: 800, fontSize: 17, color: C.dark, marginBottom: 6 }}>{children}</div>;
+}
+
+function SubText({ children }) {
+  return <div style={{ fontSize: 13, color: C.gray, marginBottom: 22, lineHeight: 1.65 }}>{children}</div>;
+}
+
+/* ─── PIPELINE TAB ─── */
+function PipelineStage({ num, color, light, title, sub, desc, metrics, tech }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div onClick={() => setOpen(o => !o)} style={{
+      background: light, border: `2px solid ${color}`, borderRadius: 12,
+      padding: 16, cursor: "pointer", width: "100%", maxWidth: 460
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ background: color, color: "#fff", fontWeight: 800, fontSize: 12,
+          width: 30, height: 30, borderRadius: 7, display: "flex", alignItems: "center",
+          justifyContent: "center", flexShrink: 0 }}>{num}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color }}>{title}</div>
+          <div style={{ fontSize: 11, color: C.gray }}>{sub}</div>
+        </div>
+        <div style={{ fontSize: 11, color: C.gray }}>{open ? "▲" : "▼"}</div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.65, marginBottom: 10 }}>{desc}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color, marginBottom: 5, letterSpacing: 0.5 }}>WHAT GETS SCORED</div>
+          {metrics.map(m => (
+            <div key={m} style={{ fontSize: 11, color: C.gray, marginBottom: 2 }}>· {m}</div>
+          ))}
+          <div style={{ marginTop: 10, fontSize: 11, color: C.gray,
+            background: "#fff", padding: "4px 10px", borderRadius: 6, display: "inline-block" }}>⚙ {tech}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Connector({ label }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "4px 0" }}>
+      <div style={{ width: 2, height: 14, background: C.border }} />
+      <div style={{ fontSize: 10, color: C.gray, background: "#F3F4F6",
+        padding: "2px 8px", borderRadius: 4, margin: "2px 0" }}>{label}</div>
+      <div style={{ fontSize: 18, color: C.gray, lineHeight: 1 }}>↓</div>
+    </div>
+  );
+}
+
+function PipelineTab() {
+  return (
+    <div>
+      <SectionTitle>The Three-Stage Enterprise Pipeline</SectionTitle>
+      <SubText>One cohesive customer-support system. Three LangGraph nodes chained together.
+        AgentBench evaluates each node individually <em>and</em> the full end-to-end system.</SubText>
+
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+
+        {/* Input */}
+        <div style={{ border: `2px dashed ${C.border}`, borderRadius: 10, padding: "12px 24px",
+          textAlign: "center", width: "100%", maxWidth: 460, background: "#fff" }}>
+          <div style={{ fontSize: 10, color: C.gray, fontWeight: 700, letterSpacing: 1,
+            textTransform: "uppercase", marginBottom: 4 }}>INPUT — Raw Customer Query</div>
+          <div style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>
+            "My invoice is wrong and I need a refund ASAP"
+          </div>
+          <div style={{ fontSize: 11, color: C.gray, marginTop: 3 }}>
+            Task suite fires 120 prompts spanning billing, technical, policy & edge cases
+          </div>
+        </div>
+
+        <Connector label="raw query enters pipeline" />
+
+        <PipelineStage num="01" color={C.blue} light={C.lBlue}
+          title="Routing Agent" sub="Intent Classification"
+          desc="Receives the raw query. Classifies intent (billing, technical, policy, refund, escalation) and routes to the correct handler. The first decision gate — if it gets this wrong, everything downstream is compromised."
+          metrics={["Classification accuracy", "Edge-case mis-route rate", "Ambiguous query handling"]}
+          tech="LangGraph node · AWS Bedrock · classification prompt chain"
+        />
+
+        <Connector label="typed intent + routed query" />
+
+        <PipelineStage num="02" color={C.purple} light={C.lPurple}
+          title="RAG Agent" sub="Knowledge Retrieval"
+          desc="Takes the classified, routed query. Searches the knowledge base, policy docs, and product FAQs. Returns grounded context to answer faithfully. This is where hallucination either gets prevented or introduced."
+          metrics={["Retrieval precision", "Faithfulness to source", "Hallucination rate"]}
+          tech="LangGraph node · FAISS vector store · Bedrock embeddings"
+        />
+
+        <Connector label="retrieved context + original query" />
+
+        <PipelineStage num="03" color={C.green} light={C.lGreen}
+          title="Response Agent" sub="Answer Generation"
+          desc="Synthesizes the retrieved context into a final customer-facing response. Manages tone, completeness, escalation decision, and safe output. The most visible layer — but heavily dependent on the quality of stages 1 and 2."
+          metrics={["Response quality & completeness", "Tone & escalation accuracy", "Compliance with safety tiers"]}
+          tech="LangGraph node · Bedrock Claude / GPT-4o / Gemini (swappable)"
+        />
+
+        <Connector label="final grounded response" />
+
+        {/* Output */}
+        <div style={{ border: `2px solid ${C.green}`, borderRadius: 10, padding: "12px 24px",
+          textAlign: "center", width: "100%", maxWidth: 460, background: C.lGreen }}>
+          <div style={{ fontSize: 10, color: C.green, fontWeight: 700, letterSpacing: 1,
+            textTransform: "uppercase", marginBottom: 4 }}>OUTPUT — Final Response</div>
+          <div style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>
+            "I've located invoice #4821. A refund of $84 has been initiated — 3–5 business days."
+          </div>
+          <div style={{ fontSize: 11, color: C.gray, marginTop: 3 }}>
+            Scored for accuracy · faithfulness · tone · safety compliance
+          </div>
+        </div>
+
+        {/* AgentBench wrapper label */}
+        <div style={{ marginTop: 20, background: C.dark, borderRadius: 10, padding: "12px 20px",
+          width: "100%", maxWidth: 460, textAlign: "center" }}>
+          <div style={{ color: "#9CA3AF", fontSize: 11, fontWeight: 700, letterSpacing: 1,
+            textTransform: "uppercase", marginBottom: 4 }}>AgentBench wraps the entire pipeline</div>
+          <div style={{ color: "#fff", fontSize: 12, lineHeight: 1.6 }}>
+            Swaps in GPT-4o, Claude, Gemini, and open-source models at the Response layer.
+            Scores every stage. Finds where each model breaks down.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── EVAL FLOW TAB ─── */
+function EvalRow({ step, color, title, children }) {
+  return (
+    <div style={{ display: "flex", gap: 14, background: "#fff", borderRadius: 10,
+      padding: 16, border: `1px solid ${C.border}` }}>
+      <div style={{ width: 30, height: 30, borderRadius: "50%", background: color,
+        color: "#fff", fontWeight: 800, fontSize: 13, display: "flex",
+        alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{step}</div>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13, color: C.dark, marginBottom: 4 }}>{title}</div>
+        <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.65 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function EvalTab() {
+  return (
+    <div>
+      <SectionTitle>How AgentBench Evaluates the Pipeline</SectionTitle>
+      <SubText>The eval runner wraps around the pipeline. It fires task prompts, captures outputs at each stage,
+        scores them against rubrics, and flags compliance. All automated.</SubText>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <EvalRow step="1" color={C.blue} title="Task Suite Fires">
+          120 curated prompts across 4 intent categories: billing, technical, policy, edge cases.
+          Each prompt has a ground-truth expected output and a compliance flag pre-assigned.
+        </EvalRow>
+        <EvalRow step="2" color={C.purple} title="Full Pipeline Runs — All 3 Stages">
+          Each prompt passes through Routing → RAG → Response. The eval runner captures intermediate
+          outputs at every node — not just the final answer. This is what makes per-stage scoring possible.
+        </EvalRow>
+        <EvalRow step="3" color={C.orange} title="Scoring Engine Runs Two Pillars">
+          <div>
+            <div style={{ marginBottom: 8 }}>Both pillars scored independently at the stage level and end-to-end:</div>
+            <div style={{ background: C.lBlue, borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: C.blue, marginBottom: 2 }}>Pillar 1 — Task Accuracy</div>
+              <div>Pass@1, Pass@3, partial credit scoring. Per-stage and full pipeline composite.</div>
+            </div>
+            <div style={{ background: "#FEF2F2", borderRadius: 8, padding: "8px 12px" }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: C.red, marginBottom: 2 }}>Pillar 2 — Values / Safety Compliance</div>
+              <div>3-tier compliance battery (based on Cummins framework). Adversarial prompts per stage. Cumulative pipeline compliance score.</div>
+            </div>
+          </div>
+        </EvalRow>
+        <EvalRow step="4" color={C.green} title="Scorecard Generated">
+          One PM-readable scorecard per model run. Per-stage accuracy, pipeline composite,
+          compliance tier pass rates, and a verdict: <Tag color={C.green}>SHIP</Tag>&nbsp;
+          <Tag color={C.orange}>CONDITIONAL</Tag>&nbsp;<Tag color={C.red}>HOLD</Tag>
+        </EvalRow>
+        <EvalRow step="5" color={C.dark} title="Leaderboard Updated">
+          All runs (GPT-4o, Claude, Gemini, open-source) compared head-to-head on the public
+          Streamlit dashboard. Shows which model breaks at which stage — the finding that drives inbound.
+        </EvalRow>
+      </div>
+    </div>
+  );
+}
+
+/* ─── LEADERBOARD TAB ─── */
+function LeaderboardTab() {
+  const rows = [
+    { model: "Claude 3.5 Sonnet", r: "94%", ret: "88%", res: "91%", pipe: "82%", comp: "89%", verdict: "SHIP", vc: C.green },
+    { model: "GPT-4o",            r: "96%", ret: "79%", res: "88%", pipe: "74%", comp: "81%", verdict: "CONDITIONAL", vc: C.orange },
+    { model: "Gemini 1.5 Pro",    r: "89%", ret: "85%", res: "83%", pipe: "72%", comp: "76%", verdict: "CONDITIONAL", vc: C.orange },
+    { model: "Llama 3 70B",       r: "81%", ret: "74%", res: "79%", pipe: "58%", comp: "61%", verdict: "HOLD", vc: C.red },
+  ];
+  const findings = [
+    { color: C.blue,   title: "GPT-4o routes best but retrieves worst", body: "96% routing accuracy drops to 79% retrieval — the strongest router loses the most context downstream." },
+    { color: C.purple, title: "Claude leads on compliance across all tiers", body: "89% compliance vs 61% for Llama 3. The compliance gap is larger than the accuracy gap." },
+    { color: C.orange, title: "Pipeline score ≠ average of stage scores", body: "Errors compound. 89% average per stage → only 72% end-to-end. The cascade effect is real and measurable." },
+    { color: C.green,  title: "No single model wins every stage", body: "Best routing: GPT-4o. Best retrieval: Gemini. Best compliance: Claude. Stage-aware selection beats one-size-fits-all." },
+  ];
+  return (
+    <div>
+      <SectionTitle>What the Leaderboard Shows</SectionTitle>
+      <SubText>This is the public artifact — the finding that drives GitHub stars and inbound interest.
+        Models don't fail uniformly. They fail at different stages, for different reasons.</SubText>
+
+      <div style={{ background: "#fff", borderRadius: 12, border: `1px solid ${C.border}`,
+        overflow: "hidden", marginBottom: 20 }}>
+        <div style={{ background: C.dark, padding: "12px 18px" }}>
+          <div style={{ color: "#fff", fontWeight: 700, fontSize: 13 }}>
+            AgentBench Leaderboard — Enterprise Support Pipeline v1.0
+          </div>
+          <div style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }}>
+            120 tasks · 3-stage pipeline · 4 models compared
+          </div>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "#F9FAFB" }}>
+                {["Model", "Routing", "Retrieval", "Response", "Pipeline ★", "Compliance", "Verdict"].map(h => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700,
+                    color: C.gray, borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={row.model} style={{ background: i % 2 === 0 ? "#fff" : "#FAFAFA",
+                  borderBottom: `1px solid ${C.border}` }}>
+                  <td style={{ padding: "10px 14px", fontWeight: 700, color: C.dark, whiteSpace: "nowrap" }}>{row.model}</td>
+                  <td style={{ padding: "10px 14px", color: C.blue,   fontWeight: 600 }}>{row.r}</td>
+                  <td style={{ padding: "10px 14px", color: C.purple, fontWeight: 600 }}>{row.ret}</td>
+                  <td style={{ padding: "10px 14px", color: C.green,  fontWeight: 600 }}>{row.res}</td>
+                  <td style={{ padding: "10px 14px", fontWeight: 800, color: C.dark }}>{row.pipe}</td>
+                  <td style={{ padding: "10px 14px", color: C.red,    fontWeight: 600 }}>{row.comp}</td>
+                  <td style={{ padding: "10px 14px" }}>
+                    <Tag color={row.vc}>{row.verdict}</Tag>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={{ fontWeight: 700, fontSize: 13, color: C.dark, marginBottom: 10 }}>Key Findings the Leaderboard Surfaces</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        {findings.map(f => (
+          <div key={f.title} style={{ background: "#fff", borderRadius: 10, padding: 14,
+            border: `1px solid ${C.border}` }}>
+            <div style={{ fontWeight: 700, fontSize: 12, color: f.color, marginBottom: 5 }}>{f.title}</div>
+            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.6 }}>{f.body}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── FULL PROJECT TAB ─── */
+function FullProjectTab() {
+  const phases = [
+    { phase: "Phase 1", months: "April – May", color: C.blue, title: "Foundation",
+      deliverable: "PRD on GitHub + Discovery complete",
+      tasks: [
+        "Write public PRD — problem, personas, V1 scope, success metrics",
+        "Run 8–10 discovery interviews with agent builders outside Cummins",
+        "Define task suite schema — 120 prompts across 4 intent types",
+        "Set up GitHub repo, README, open source from day 1",
+      ]},
+    { phase: "Phase 2", months: "June – July", color: C.purple, title: "Build",
+      deliverable: "V1 eval runner live on GitHub",
+      tasks: [
+        "Build 3-stage pipeline in LangGraph + AWS Bedrock",
+        "Build eval runner — fires task suite, captures per-stage outputs",
+        "Build scoring engine — Task Accuracy (Pass@1/3) + Compliance tiers",
+        "Run first internal benchmark across GPT-4o, Claude, Gemini",
+      ]},
+    { phase: "Phase 3", months: "August", color: C.orange, title: "Launch",
+      deliverable: "Public leaderboard + case study live",
+      tasks: [
+        "Launch Streamlit leaderboard at public URL",
+        "Publish case study write-up on Medium / Substack",
+        "LinkedIn post — framework launch",
+        "LinkedIn post — the surprising cascade-effect finding",
+      ]},
+    { phase: "Phase 4", months: "Sept – Dec", color: C.green, title: "Leverage",
+      deliverable: "Project referenced in every interview",
+      tasks: [
+        "Iterate on community feedback — V1.1",
+        "Begin applying to target roles — project as lead artifact",
+        "PM retrospective post — what the PRD got wrong",
+        "Interview season — every answer ties back to AgentBench",
+      ]},
+  ];
+  return (
+    <div>
+      <SectionTitle>Full Project Flow — April to December 2026</SectionTitle>
+      <SubText>Everything from first commit to interview season. Each phase has one concrete public deliverable.</SubText>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {phases.map((p, i) => (
+          <div key={p.phase} style={{ display: "flex", gap: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 42, flexShrink: 0 }}>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: p.color,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#fff", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>{i + 1}</div>
+              {i < 3 && <div style={{ width: 2, flex: 1, background: C.border, minHeight: 24 }} />}
+            </div>
+            <div style={{ flex: 1, paddingLeft: 14, paddingBottom: 28 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: p.color }}>{p.phase} — {p.title}</div>
+                <div style={{ fontSize: 11, color: C.gray }}>{p.months}</div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: p.color,
+                background: p.color + "18", padding: "4px 10px", borderRadius: 6,
+                display: "inline-block", marginBottom: 10 }}>✓ {p.deliverable}</div>
+              {p.tasks.map(t => (
+                <div key={t} style={{ display: "flex", gap: 8, fontSize: 12,
+                  color: C.gray, lineHeight: 1.6, marginBottom: 3 }}>
+                  <span style={{ color: p.color, flexShrink: 0 }}>→</span><span>{t}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: C.dark, borderRadius: 12, padding: 20 }}>
+        <div style={{ color: "#9CA3AF", fontSize: 11, fontWeight: 700, letterSpacing: 1,
+          textTransform: "uppercase", marginBottom: 12 }}>What You Walk Into Interviews With</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { label: "Public PRD", sub: "End-to-end product thinking, on GitHub" },
+            { label: "Live leaderboard", sub: "GPT-4o vs Claude vs Gemini — public URL" },
+            { label: "Open-source repo", sub: "Real code, LangGraph + Bedrock, forkable" },
+            { label: "Case study", sub: "The cascade effect finding — your name on it" },
+          ].map(item => (
+            <div key={item.label} style={{ background: "#1F2937", borderRadius: 8, padding: 12 }}>
+              <div style={{ color: "#F9FAFB", fontWeight: 700, fontSize: 13 }}>{item.label}</div>
+              <div style={{ color: "#6B7280", fontSize: 11, marginTop: 3 }}>{item.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── ROOT APP ─── */
+function App() {
+  const [active, setActive] = React.useState("Pipeline");
+  const tabs = ["Pipeline", "Eval Flow", "Leaderboard", "Full Project"];
+  return (
+    <div style={{ maxWidth: 840, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+          <div style={{ background: C.dark, color: "#fff", fontWeight: 800, fontSize: 22,
+            padding: "6px 16px", borderRadius: 8, letterSpacing: -0.5 }}>AgentBench</div>
+          <div style={{ color: C.gray, fontSize: 13 }}>Visual Project Map</div>
+        </div>
+        <div style={{ fontSize: 13, color: C.gray, maxWidth: 580, lineHeight: 1.6 }}>
+          An open-source LLM agent evaluation framework — the layer between
+          <em> "we built an agent"</em> and <em>"we shipped an agent."</em>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 26, flexWrap: "wrap" }}>
+        {tabs.map(t => (
+          <button key={t} onClick={() => setActive(t)} style={{
+            padding: "9px 20px", borderRadius: 8, border: "none", cursor: "pointer",
+            fontWeight: 700, fontSize: 13,
+            background: active === t ? C.dark : "#E5E7EB",
+            color: active === t ? "#fff" : C.gray,
+          }}>{t}</button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {active === "Pipeline"     && <PipelineTab />}
+      {active === "Eval Flow"    && <EvalTab />}
+      {active === "Leaderboard"  && <LeaderboardTab />}
+      {active === "Full Project" && <FullProjectTab />}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
