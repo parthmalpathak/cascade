@@ -316,32 +316,7 @@ cascade/
 
 ---
 
-## 5. Risks & Roadmap
-
-### Phased Rollout
-
-**V1 — Core Framework (Target: August 2026)**
-- Reference 3-stage customer support pipeline (fully functional)
-- agent_manifest.json schema + workflow.yaml contract
-- Query Agent (test suite generation + human review gate)
-- Eval runner + Grader Agent (Task Accuracy + Safety Compliance scoring)
-- Manual benchmark run loop (model swap + re-run)
-- Auto-run mode with cost preview, max-flow scheduler, checkpoint/resume
-- Local Streamlit dashboard with leaderboard + Cascade Effect view
-
-**V1.1 — Community Hardening (Target: October 2026)**
-- Rubric designer: configurable Grader Agent rubrics (LLM-as-judge vs ground-truth mode)
-- 2–3 additional reference workflow implementations (contributed or built)
-- CLI polish: `cascade init`, `cascade run`, `cascade dashboard` commands
-- Expanded model support: Mistral, Llama 3 via Ollama (local inference)
-
-**V2 — Advanced Evaluation (Target: Q1 2027)**
-- Cost + latency benchmarking per model combination
-- Branching / parallel workflow support
-- Industry eval metrics: RAGAS integration for RAG agents, G-EVAL for response quality
-- Hosted leaderboard (optional, opt-in): share public benchmark results via URL
-
----
+## 5. Risks
 
 ### Technical Risks
 
