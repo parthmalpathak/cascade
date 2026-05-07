@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cascade — PRD</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.6; }
+    h1 { font-size: 2rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; }
+    h2 { font-size: 1.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-top: 40px; }
+    h3 { font-size: 1.2rem; margin-top: 28px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 0.9rem; }
+    th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+    th { background: #f9fafb; font-weight: 600; }
+    tr:nth-child(even) { background: #f9fafb; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.875rem; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 16px; border-radius: 8px; overflow-x: auto; }
+    pre code { background: none; padding: 0; color: inherit; }
+    blockquote { border-left: 4px solid #e5e7eb; margin: 0; padding-left: 16px; color: #6b7280; }
+    a { color: #2563eb; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
+  </style>
+</head>
+<body>
+<h1 id="cascade-product-requirements-document">Cascade — Product Requirements Document</h1>
+<p><strong>Owner:</strong> Parth Malpathak · parthmalpathak@gmail.com<br />
+<strong>Version:</strong> 1.0 — April 2026<br />
+<strong>Status:</strong> Draft</p>
+<hr />
+<h2 id="1-executive-summary">1. Executive Summary</h2>
+<h3 id="problem-statement">Problem Statement</h3>
+<p>Teams building multi-agent LLM pipelines have no systematic way to know whether a given model combination is production-ready — or which model performs best at each stage of their workflow. Evaluation today is ad hoc: a single end-to-end test that masks per-stage failure modes and gives no actionable signal about where to improve.</p>
+<h3 id="proposed-solution">Proposed Solution</h3>
+<p>Cascade is a local-first, agent-agnostic benchmarking framework. Describe your agents in manifest files, and Cascade auto-generates a tailored test suite, runs systematic model-combination experiments, and produces a per-stage leaderboard with a SHIP / CONDITIONAL / HOLD verdict. It works for any pipeline regardless of origin — LangGraph code, ChatGPT Custom GPTs, Microsoft Copilot agents, or any platform where agent instructions can be extracted to a manifest. The reference implementation is a 3-stage enterprise customer support pipeline (Routing → RAG → Response), built in LangGraph and shipped with the repo.</p>
+<h3 id="success-criteria">Success Criteria</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Target</th>
+<th>How Measured</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pipeline performance delta</td>
+<td>≥10% improvement in composite score between worst and best model combination found</td>
+<td>Leaderboard run comparison</td>
+</tr>
+<tr>
+<td>Leaderboard runs completed</td>
+<td>≥10 full benchmark runs across model combinations by end of V1 public release</td>
+<td><code>runs.jsonl</code> count</td>
+</tr>
+<tr>
+<td>Onboarding time</td>
+<td>A new user can plug in their own workflow and run a first benchmark in ≤30 minutes</td>
+<td>Timed usability test</td>
+</tr>
+<tr>
+<td>Task suite generation quality</td>
+<td>≥80% of Query Agent-generated tests pass human reviewer approval without edits</td>
+<td>Review gate acceptance rate</td>
+</tr>
+<tr>
+<td>Framework adoption</td>
+<td>≥3 external workflows successfully benchmarked by community users within 60 days of launch</td>
+<td>GitHub issues / community reports</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-user-experience-functionality">2. User Experience &amp; Functionality</h2>
+<h3 id="user-personas">User Personas</h3>
+<table>
+<thead>
+<tr>
+<th>Persona</th>
+<th>Role</th>
+<th>Technical Level</th>
+<th>Goal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The Deployer</strong></td>
+<td>AI PM / ML engineer who owns a live multi-agent pipeline built in code (LangGraph, custom Python)</td>
+<td>Comfortable with Python and LLM APIs; not a researcher</td>
+<td>Wants to know: "Is my current model combination optimal? Where is my pipeline breaking?"</td>
+</tr>
+<tr>
+<td><strong>The Migrator</strong></td>
+<td>AI PM or ops lead who built a multi-agent workflow on a no-code platform (ChatGPT Custom GPTs, Microsoft Copilot Studio) and is locked into that platform's model choice</td>
+<td>Can copy-paste agent instructions and export knowledge files; not writing pipeline code</td>
+<td>Wants to evaluate: "Would this workflow perform better if I migrated to Claude or a different model combination?"</td>
+</tr>
+<tr>
+<td><strong>The Learner</strong></td>
+<td>Developer or PM new to multi-agent AI</td>
+<td>Knows prompting; unfamiliar with eval frameworks</td>
+<td>Wants to understand how model choice and hyperparameter tuning affect real pipeline outputs — uses the reference customer support pipeline as their sandbox</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="user-stories-acceptance-criteria">User Stories &amp; Acceptance Criteria</h3>
+<h4 id="epic-1-plug-in-your-workflow">Epic 1 — Plug In Your Workflow</h4>
+<p><strong>US-1.1</strong> — As a Deployer or Migrator, I want to register my agent workflow by writing <code>agent_manifest.json</code> files so that Cascade understands my pipeline without requiring code changes.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] A <code>agent_manifest.json</code> schema is documented with the following fields:
+  - <strong>Required:</strong> <code>agent_id</code>, <code>role_description</code>, <code>input_schema</code>, <code>output_schema</code>
+  - <strong>Required for native execution:</strong> <code>platform</code> (one of: <code>langgraph</code>, <code>chatgpt_custom_gpt</code>, <code>copilot_studio</code>, <code>custom</code>), <code>system_prompt</code> (full text — copied verbatim from the platform)
+  - <strong>Optional:</strong> <code>knowledge_base_path</code> (directory of knowledge files — Cascade builds a FAISS index from these for native execution), <code>constraints</code>, <code>eval_focus</code>
+  - <strong>Code-based only:</strong> <code>pipeline_entrypoint</code> (Python dotted path + function, e.g. <code>workflows.customer_support.pipeline.pipeline:run_pipeline</code>) — when set, Cascade delegates execution to this function instead of running natively; <code>system_prompt</code> in the manifest is then used only by the Query Agent for test generation context
+- [ ] Cascade CLI validates the manifest on load and surfaces schema errors before any run starts
+- [ ] A manifest with missing required fields produces a human-readable error, not a stack trace
+- [ ] The reference customer support pipeline ships with pre-written manifests for all 3 agents as examples</p>
+<p><strong>US-1.2</strong> — As a Deployer, I want Cascade to understand how my agents are chained so that the Query Agent can generate coherent, workflow-aware tests.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] A <code>workflow.yaml</code> file declares agent execution order and data flow between agents
+- [ ] The Query Agent reads both the manifests and <code>workflow.yaml</code> before generating any tests
+- [ ] Cascade correctly identifies the entry agent and terminal agent in any linear or branching workflow</p>
+<hr />
+<h4 id="epic-2-test-suite-generation-query-agent">Epic 2 — Test Suite Generation (Query Agent)</h4>
+<p><strong>US-2.1</strong> — As a Deployer, I want the Query Agent to auto-generate a test suite tuned to my workflow so that I don't have to write 120 prompts by hand.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] Query Agent generates a <code>task_suite.json</code> containing ≥30 test cases per agent (configurable)
+- [ ] Each test case includes: <code>prompt</code>, <code>target_agent</code>, <code>intent_category</code>, <code>compliance_flag</code>, <code>expected_output_hint</code>
+- [ ] Tests span at minimum 4 categories: happy path, edge case, adversarial/safety, ambiguous input
+- [ ] Query Agent outputs a <code>task_suite_v{N}.json</code> with version increment on each regeneration — prior versions are preserved
+- [ ] Generation completes in ≤3 minutes for a 3-agent workflow on Claude Sonnet</p>
+<p><strong>US-2.2</strong> — As a Deployer, I want to review and edit the generated test suite before any benchmark run starts so that I have full control over what gets tested.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] After generation, Cascade prints: "Review <code>task_suite_v{N}.json</code> and press Enter to proceed, or <code>q</code> to abort"
+- [ ] User can edit the JSON file freely before confirming — Cascade re-validates schema on confirm
+- [ ] No benchmark run can start without explicit user confirmation of the task suite
+- [ ] Cascade displays test count per agent and per category at the review prompt</p>
+<hr />
+<h4 id="epic-3-benchmark-run-loop">Epic 3 — Benchmark Run Loop</h4>
+<p><strong>US-3.1</strong> — As a Deployer, I want to run a benchmark against a specific model combination and see per-stage scores so that I can evaluate my current setup.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] User specifies a model per agent in <code>run_config.yaml</code> before each run
+- [ ] Eval runner fires all tasks through the full pipeline, capturing intermediate outputs at every agent node
+- [ ] Each run produces a <code>scorecard_{run_id}.json</code> with: per-agent Pass@1, per-agent Pass@3, pipeline composite score, compliance tier pass rates, and overall verdict (SHIP / CONDITIONAL / HOLD)
+- [ ] Run completes for 30 tasks across 3 agents in ≤10 minutes (non-auto-run mode)</p>
+<p><strong>US-3.2</strong> — As a Deployer, I want to iteratively swap models per agent and compare scores across runs so that I can converge on the optimal model combination.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] After each run completes, Cascade prompts: "Change model for any agent? [y/n]" with current config displayed
+- [ ] User can update any subset of agents' models without re-generating the task suite
+- [ ] New run appends results to the leaderboard; prior run results are never overwritten
+- [ ] Leaderboard displays all runs ranked by pipeline composite score</p>
+<p><strong>US-3.3</strong> — As a Deployer, I want an Auto-Run mode that tests all permutations of a selected model pool so that I don't have to manually iterate.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] User defines a model pool per agent in <code>auto_run_config.yaml</code> (e.g., 3 models × 3 agents = 27 combinations)
+- [ ] Before starting, Cascade displays: "X combinations × Y tests = Z API calls · Estimated cost: ~$N · Estimated time: ~T minutes. Confirm? [y/n]"
+- [ ] Auto-run uses max-flow scheduling to distribute combinations across parallel workers (default: 3 workers, configurable)
+- [ ] Checkpoint + resume: if auto-run is interrupted, restarting skips completed combinations (detected via <code>runs.jsonl</code>)
+- [ ] Lite mode flag (<code>--lite</code>) runs 1 worker per combination and uses a reduced task suite (10 tasks per agent) for rapid spot-checking</p>
+<hr />
+<h4 id="epic-4-grader-agent-scoring">Epic 4 — Grader Agent &amp; Scoring</h4>
+<p><strong>US-4.1</strong> — As a Deployer, I want the Grader Agent to automatically score each pipeline run so that I don't have to manually evaluate outputs.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] Grader Agent scores every agent output on two pillars: Task Accuracy (Pass@1, Pass@3) and Safety Compliance (3-tier: baseline / values-block / intervention)
+- [ ] Grader produces a numeric score (0.0–1.0) per test per agent, plus a compliance verdict per tier
+- [ ] Pipeline composite score is computed as the product of per-stage scores (not average), surfacing the cascade compounding effect
+- [ ] Grader outputs results to <code>results/{run_id}/grader_output.json</code> for dashboard ingestion</p>
+<p><em>Note: Rubric design (LLM-as-judge vs ground-truth matching) is an open V2 design decision — see Section 5.</em></p>
+<hr />
+<h4 id="epic-5-dashboard">Epic 5 — Dashboard</h4>
+<p><strong>US-5.1</strong> — As a Deployer, I want a local Streamlit dashboard that shows all my benchmark runs in a leaderboard so that I can compare model combinations at a glance.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] Dashboard launches with <code>streamlit run dashboard/app.py</code> from the project root
+- [ ] Leaderboard table shows: Model combination, per-agent scores, pipeline composite, compliance score, verdict
+- [ ] Runs can be filtered by: workflow, date range, verdict (SHIP / CONDITIONAL / HOLD)
+- [ ] Clicking a run shows the full scorecard: per-task pass/fail, compliance tier breakdown, per-agent drill-down
+- [ ] Dashboard auto-refreshes when a new <code>grader_output.json</code> is written (polling interval: 5 seconds)
+- [ ] "Export" button generates a self-contained HTML snapshot of the current leaderboard view for sharing</p>
+<p><strong>US-5.2</strong> — As a Learner, I want the dashboard to show me which stage of the pipeline is weakest for each model so that I understand where errors compound.</p>
+<p><em>Acceptance Criteria:</em>
+- [ ] Dashboard includes a "Cascade Effect" view: bar chart showing per-stage score vs pipeline composite, illustrating error compounding
+- [ ] View is available for any run, not just comparisons
+- [ ] Weakest stage is highlighted in the leaderboard table</p>
+<hr />
+<h3 id="non-goals-v1">Non-Goals (V1)</h3>
+<ul>
+<li><strong>No cost/latency benchmarking</strong> — model speed and API cost comparison are V2</li>
+<li><strong>No hosted / cloud deployment</strong> — Cascade is local-only in V1; no shared leaderboard, no auth</li>
+<li><strong>No branching/parallel workflow support</strong> — V1 supports linear agent chains only</li>
+<li><strong>No rubric designer UI</strong> — grader rubric configuration is file-based only; no GUI</li>
+<li><strong>No model fine-tuning</strong> — Cascade evaluates model inference only; no training loop</li>
+<li><strong>No mobile / responsive dashboard</strong> — desktop browser only</li>
+<li><strong>No streaming eval results</strong> — scores are written after a full run completes, not token-by-token</li>
+<li><strong>No replication of agent actions/plugins</strong> — Cascade evaluates the LLM reasoning layer only; mid-conversation tool calls (ChatGPT plugin actions, Copilot Studio connectors, API integrations) are not executed in native mode; pipelines that rely heavily on external tool calls will produce lower-fidelity benchmark results</li>
+</ul>
+<hr />
+<h2 id="3-ai-system-requirements">3. AI System Requirements</h2>
+<h3 id="model-tool-requirements">Model &amp; Tool Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Model</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Query Agent</strong></td>
+<td>Claude Sonnet (latest via Anthropic API)</td>
+<td>Fixed — never swapped during benchmarking. Chosen for instruction-following quality in structured output generation.</td>
+</tr>
+<tr>
+<td><strong>Grader Agent</strong></td>
+<td>Claude Sonnet (latest via Anthropic API)</td>
+<td>Fixed — must be consistent across all runs to avoid grader variance contaminating benchmark results.</td>
+</tr>
+<tr>
+<td><strong>Pipeline Agents (reference impl.)</strong></td>
+<td>Swappable: Claude 3.5 Sonnet, GPT-4o, Gemini 1.5 Pro, Llama 3 70B via AWS Bedrock</td>
+<td>These are what Cascade benchmarks — the independent variable.</td>
+</tr>
+<tr>
+<td><strong>Embeddings (RAG Agent)</strong></td>
+<td>Amazon Titan Embed Text v1 via Bedrock</td>
+<td>Fixed for the reference implementation; manifest-configurable for external workflows.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pipeline-design">Pipeline Design</h3>
+<p><strong>Execution modes</strong> — determined per-agent by the manifest:</p>
+<ul>
+<li><strong>Native mode (default):</strong> Cascade constructs the agent from <code>system_prompt</code> + optional <code>knowledge_base_path</code> (FAISS-indexed on first run), then calls the model specified in <code>run_config.yaml</code> directly via Anthropic / OpenAI / Google AI API. This is how Migrators use Cascade — they copy their ChatGPT or Copilot agent instructions into the manifest, upload knowledge files, and Cascade runs the agent against different models without any code.</li>
+<li><strong>Entrypoint mode (code-based):</strong> When <code>pipeline_entrypoint</code> is set in the manifest, Cascade dynamically imports and calls <code>run_pipeline(query: str, task_id: str) → dict</code> from the user's codebase. The manifest's <code>system_prompt</code> is used only by the Query Agent for test generation context; Cascade does not construct the agent itself. The reference customer support pipeline uses this mode.</li>
+</ul>
+<p><strong>Platform limitation:</strong> Native mode reconstructs the LLM reasoning layer only. Agent actions and mid-conversation tool calls (ChatGPT plugin actions, Copilot connectors) are not replicated. This is a known V1 constraint — see Non-Goals.</p>
+<p><strong>Other constraints:</strong>
+- <strong>Query Agent context budget</strong>: Must fit full <code>workflow.yaml</code> + all <code>agent_manifest.json</code> files within a single Claude API call. Design constraint: total manifest + workflow YAML must not exceed 50k tokens.
+- <strong>Query Agent output format</strong>: Structured JSON (<code>task_suite.json</code>) via tool use / structured output — no free-text parsing.
+- <strong>Grader Agent invocation</strong>: Called once per agent output per task. Not called end-to-end — per-node scoring is the requirement.
+- <strong>Temperature</strong>: Query Agent at 0.3 (creative enough for diverse tests, controlled enough for consistent structure). Grader Agent at 0 (deterministic scoring).</p>
+<h3 id="evaluation-strategy">Evaluation Strategy</h3>
+<table>
+<thead>
+<tr>
+<th>What Gets Evaluated</th>
+<th>Method</th>
+<th>Pass Target</th>
+<th>Reviewer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Task Accuracy — Pass@1</td>
+<td>Grader Agent score ≥ 0.7 on first attempt</td>
+<td>≥80% of tasks per agent</td>
+<td>Automated</td>
+</tr>
+<tr>
+<td>Task Accuracy — Pass@3</td>
+<td>Grader Agent score ≥ 0.7 on any of 3 attempts</td>
+<td>≥90% of tasks per agent</td>
+<td>Automated</td>
+</tr>
+<tr>
+<td>Safety Compliance — Baseline</td>
+<td>No unsafe outputs on standard prompts</td>
+<td>100%</td>
+<td>Automated</td>
+</tr>
+<tr>
+<td>Safety Compliance — Values-block</td>
+<td>Refuses or redirects adversarial prompts</td>
+<td>≥95%</td>
+<td>Automated</td>
+</tr>
+<tr>
+<td>Safety Compliance — Intervention</td>
+<td>Escalates correctly on high-risk prompts</td>
+<td>≥90%</td>
+<td>Automated</td>
+</tr>
+<tr>
+<td>Query Agent test quality</td>
+<td>% of generated tests approved without edits at human review gate</td>
+<td>≥80%</td>
+<td>Human (Deployer)</td>
+</tr>
+</tbody>
+</table>
+<p><em>Open question: Grader rubric design (LLM-as-judge vs ground-truth matching) — see Section 5, Open Questions.</em></p>
+<hr />
+<h2 id="4-technical-specifications">4. Technical Specifications</h2>
+<h3 id="architecture-overview">Architecture Overview</h3>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│  SETUP PHASE (run once per workflow)                    │
+│                                                         │
+│  agent_manifest.json × N  ──┐                          │
+│  workflow.yaml              ├──► Query Agent ──► task_suite_vN.json ──► Human Review Gate
+│                             │   (Claude API, fixed)                         │
+└─────────────────────────────┘                                               │
+                                                                              ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BENCHMARK RUN LOOP                                                         │
+│                                                                             │
+│  run_config.yaml (model per agent)                                          │
+│       │                                                                     │
+│       ▼                                                                     │
+│  Eval Runner ──► Pipeline (Agent 1 → Agent 2 → ... → Agent N)              │
+│       │              (intermediate outputs captured at every node)          │
+│       ▼                                                                     │
+│  Grader Agent ──► grader_output.json ──► runs.jsonl (checkpoint log)       │
+│  (Claude API, fixed)                         │                              │
+│                                              ▼                              │
+│                                     Dashboard (Streamlit)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Auto-Run Mode:</strong></p>
+<pre><code>auto_run_config.yaml (model pool per agent)
+    │
+    ▼
+Permutation Generator ──► Cost/time estimate ──► User confirmation
+    │
+    ▼
+Max-Flow Scheduler (N workers, configurable)
+    │
+    ├──► Worker 1: combination [A1-ModelX, A2-ModelY, A3-ModelZ]
+    ├──► Worker 2: combination [A1-ModelX, A2-ModelY, A3-ModelW]
+    └──► Worker N: ...
+         (each worker appends to runs.jsonl on completion)
+         (restart scans runs.jsonl to skip completed combinations)
+</code></pre>
+<h3 id="integration-points">Integration Points</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Integration</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query Agent</td>
+<td>Anthropic API</td>
+<td>Claude Sonnet, tool use / structured output mode</td>
+</tr>
+<tr>
+<td>Grader Agent</td>
+<td>Anthropic API</td>
+<td>Claude Sonnet, temperature 0</td>
+</tr>
+<tr>
+<td>Reference pipeline (entrypoint mode)</td>
+<td>AWS Bedrock</td>
+<td>Claude, GPT-4o (via Bedrock), Titan Embed</td>
+</tr>
+<tr>
+<td>Native mode — model APIs</td>
+<td>Anthropic API, OpenAI API, Google AI API</td>
+<td>Swappable per-agent via <code>run_config.yaml</code> model ID</td>
+</tr>
+<tr>
+<td>ChatGPT Custom GPTs</td>
+<td>User provides: system prompt (copy-paste) + knowledge files (upload)</td>
+<td>Cascade runs in native mode — no ChatGPT API access required</td>
+</tr>
+<tr>
+<td>Microsoft Copilot Studio</td>
+<td>User provides: agent instructions (copy-paste) + knowledge files (export)</td>
+<td>Cascade runs in native mode — no Copilot API access required</td>
+</tr>
+<tr>
+<td>Vector store (native mode)</td>
+<td>FAISS (local)</td>
+<td>Index built from <code>knowledge_base_path</code> on first run, cached locally</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td>Streamlit (local)</td>
+<td>Reads from <code>results/</code> directory, 5s polling</td>
+</tr>
+</tbody>
+</table>
+<h3 id="file-structure">File Structure</h3>
+<pre><code>cascade/
+├── README.md
+├── requirements.txt
+├── .env.example
+│
+├── docs/
+│   ├── PRD.md                     ← this document
+│   ├── PRD.html                   ← rendered version
+│   └── task_schema.md             ← task suite JSON schema reference
+│
+├── workflows/                     ← one subdirectory per pipeline
+│   └── customer_support/          ← reference implementation (LangGraph, high-code)
+│       ├── workflow.yaml          ← agent chain + pipeline_entrypoint declaration
+│       ├── manifests/             ← one JSON per agent
+│       │   ├── routing_agent.json
+│       │   ├── rag_agent.json
+│       │   └── response_agent.json
+│       ├── pipeline/              ← LangGraph implementation (high_code only)
+│       │   ├── routing_agent.py
+│       │   ├── rag_agent.py
+│       │   ├── response_agent.py
+│       │   ├── pipeline.py
+│       │   └── state.py
+│       └── data/
+│           └── knowledge_base/
+│               └── documents.json
+│
+├── query_agent/
+│   └── generator.py               ← reads workflow.yaml + manifests, generates task_suite_vN.json
+│
+├── tasks/                         ← approved task suites (versioned, human-reviewed)
+│
+├── eval/
+│   ├── runner.py                  ← dynamically loads pipeline via workflow_entrypoint, fires tasks
+│   ├── grader.py                  ← rule-based + LLM judge scoring per task
+│   ├── scorer.py                  ← Pass@k logic, compliance tiers
+│   ├── rubrics.py                 ← scoring rubric definitions
+│   ├── scheduler.py               ← orchestrates multi-model benchmark runs
+│   └── report.py                  ← generates scorecard JSON / markdown
+│
+├── results/                       ← raw run output (gitignored)
+│
+└── dashboard/
+    └── app.py                     ← Streamlit leaderboard
+</code></pre>
+<h3 id="security-privacy">Security &amp; Privacy</h3>
+<ul>
+<li><strong>Local-only execution</strong>: No data leaves the machine in V1. All run results, task suites, and model outputs are stored locally.</li>
+<li><strong>API key management</strong>: Anthropic and AWS credentials via environment variables only — never hardcoded, never logged.</li>
+<li><strong>No PII in reference task suite</strong>: The 120-prompt customer support task suite uses synthetic data only.</li>
+<li><strong>Compliance</strong>: No GDPR / HIPAA / SOC 2 requirements in V1 (local tool, no user data storage). External workflow users are responsible for their own data classification.</li>
+</ul>
+<h3 id="performance-requirements">Performance Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Target</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Task suite generation (Query Agent)</td>
+<td>≤3 min for 3-agent workflow, 30 tasks/agent</td>
+<td>Single Claude API call per agent</td>
+</tr>
+<tr>
+<td>Single benchmark run (manual mode)</td>
+<td>≤10 min for 30 tasks × 3 agents</td>
+<td>Sequential execution</td>
+</tr>
+<tr>
+<td>Auto-run (3 workers, 27 combinations)</td>
+<td>≤4 hours for full permutation sweep</td>
+<td>Parallelized via max-flow scheduler</td>
+</tr>
+<tr>
+<td>Dashboard load time</td>
+<td>≤3 seconds on first open</td>
+<td>Local Streamlit, reads from <code>results/</code></td>
+</tr>
+<tr>
+<td>Dashboard refresh on new run</td>
+<td>≤10 seconds</td>
+<td>5s polling + render</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-risks">5. Risks</h2>
+<h3 id="technical-risks">Technical Risks</h3>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Query Agent generates low-quality tests (too generic, misses agent intent)</td>
+<td>Medium</td>
+<td>High — bad tests make the whole benchmark meaningless</td>
+<td>Human review gate is mandatory; track approval rate metric; iterate on Query Agent prompt if &lt;80% pass rate</td>
+</tr>
+<tr>
+<td>Grader Agent inconsistency across runs (same output, different score)</td>
+<td>Medium</td>
+<td>High — contaminates leaderboard comparisons</td>
+<td>Grader temperature fixed at 0; pin model version; add grader regression tests</td>
+</tr>
+<tr>
+<td>Permutation explosion causes runaway API costs</td>
+<td>Medium</td>
+<td>Medium — frustrating but recoverable</td>
+<td>Cost estimate preview + mandatory confirmation before auto-run; Lite mode for spot-checking</td>
+</tr>
+<tr>
+<td>AWS Bedrock rate limits throttle auto-run workers</td>
+<td>Medium</td>
+<td>Medium — slows benchmark, doesn't break it</td>
+<td>Configurable worker count; exponential backoff in runner; checkpoint/resume means no lost work</td>
+</tr>
+<tr>
+<td>agent_manifest.json schema too rigid — users can't describe their agents accurately</td>
+<td>Low</td>
+<td>High — blocks framework adoption</td>
+<td>Ship schema with 3 real examples; accept <code>extra_fields</code> passthrough; gather feedback in V1.1</td>
+</tr>
+<tr>
+<td>LangGraph state passing breaks between agent nodes</td>
+<td>Low</td>
+<td>Medium — breaks reference impl.</td>
+<td>Existing pipeline already working; add integration test that asserts state keys at each node</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="open-questions">Open Questions</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Question</th>
+<th>Owner</th>
+<th>Blocking?</th>
+<th>Target Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OQ-1</td>
+<td><strong>Grader rubric design</strong>: LLM-as-judge with no ground truth, or Query Agent also generates expected outputs + rubric per test?</td>
+<td>Parth</td>
+<td>No (V2)</td>
+<td>V1.1 design session</td>
+</tr>
+<tr>
+<td>OQ-2</td>
+<td><strong>Dashboard hosting V2</strong>: Will the leaderboard ever be public/shareable? If yes, need auth + backend.</td>
+<td>Parth</td>
+<td>No</td>
+<td>V2 scoping</td>
+</tr>
+<tr>
+<td>OQ-3</td>
+<td><strong>Workflow.yaml schema</strong>: What's the minimum representation needed for branching/conditional workflows? Linear is V1, but schema should not foreclose V2.</td>
+<td>Parth</td>
+<td>Soft — affects schema design</td>
+<td>Before V1 code freeze</td>
+</tr>
+<tr>
+<td>OQ-4</td>
+<td><strong>Query Agent model lock</strong>: If Anthropic deprecates the pinned Claude Sonnet version, what's the re-validation process to ensure test quality doesn't regress?</td>
+<td>Parth</td>
+<td>No</td>
+<td>Ongoing</td>
+</tr>
+<tr>
+<td>OQ-5</td>
+<td><strong>Grader Agent as separate process vs inline</strong>: Should the Grader run synchronously in the eval loop or as a post-processing step? Async is faster; sync gives live score feedback.</td>
+<td>Parth</td>
+<td>Yes — affects runner architecture</td>
+<td>Before V1 build starts</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Cascade V1.0 PRD — Parth Malpathak · April 2026</em></p>
+</body>
+</html>

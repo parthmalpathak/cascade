@@ -51,7 +51,7 @@ Cascade is a local-first, agent-agnostic benchmarking framework. Describe your a
   - **Required:** `agent_id`, `role_description`, `input_schema`, `output_schema`
   - **Required for native execution:** `platform` (one of: `langgraph`, `chatgpt_custom_gpt`, `copilot_studio`, `custom`), `system_prompt` (full text — copied verbatim from the platform)
   - **Optional:** `knowledge_base_path` (directory of knowledge files — Cascade builds a FAISS index from these for native execution), `constraints`, `eval_focus`
-  - **Code-based only:** `pipeline_entrypoint` (Python dotted path + function, e.g. `examples.customer_support.pipeline.pipeline:run_pipeline`) — when set, Cascade delegates execution to this function instead of running natively; `system_prompt` in the manifest is then used only by the Query Agent for test generation context
+  - **Code-based only:** `pipeline_entrypoint` (Python dotted path + function, e.g. `workflows.customer_support.pipeline.pipeline:run_pipeline`) — when set, Cascade delegates execution to this function instead of running natively; `system_prompt` in the manifest is then used only by the Query Agent for test generation context
 - [ ] Cascade CLI validates the manifest on load and surfaces schema errors before any run starts
 - [ ] A manifest with missing required fields produces a human-readable error, not a stack trace
 - [ ] The reference customer support pipeline ships with pre-written manifests for all 3 agents as examples
@@ -267,19 +267,23 @@ Max-Flow Scheduler (N workers, configurable)
 
 ```
 cascade/
-├── PRD.md
 ├── README.md
+├── requirements.txt
+├── .env.example
 │
-├── manifests/                     ← active workflow's agent manifests (one set per workflow)
-│   ├── routing_agent.json
-│   ├── rag_agent.json
-│   └── response_agent.json
+├── docs/
+│   ├── PRD.md                     ← this document
+│   ├── PRD.html                   ← rendered version
+│   └── task_schema.md             ← task suite JSON schema reference
 │
-├── workflow.yaml                  ← declares agent chain and data flow
-│
-├── examples/
+├── workflows/                     ← one subdirectory per pipeline
 │   └── customer_support/          ← reference implementation (LangGraph, high-code)
-│       ├── pipeline/
+│       ├── workflow.yaml          ← agent chain + pipeline_entrypoint declaration
+│       ├── manifests/             ← one JSON per agent
+│       │   ├── routing_agent.json
+│       │   ├── rag_agent.json
+│       │   └── response_agent.json
+│       ├── pipeline/              ← LangGraph implementation (high_code only)
 │       │   ├── routing_agent.py
 │       │   ├── rag_agent.py
 │       │   ├── response_agent.py
@@ -290,31 +294,22 @@ cascade/
 │               └── documents.json
 │
 ├── query_agent/
-│   └── generator.py               ← Query Agent: reads manifests + workflow.yaml, generates task_suite.json
+│   └── generator.py               ← reads workflow.yaml + manifests, generates task_suite_vN.json
 │
-├── tasks/
-│   ├── task_suite_v1.json         ← versioned, human-reviewed test suite (Query Agent output)
-│   └── schema.md                  ← task format spec
+├── tasks/                         ← approved task suites (versioned, human-reviewed)
 │
 ├── eval/
-│   ├── runner.py                  ← fires tasks; native mode or calls pipeline_entrypoint
-│   ├── grader.py                  ← Grader Agent: scores per node
+│   ├── runner.py                  ← dynamically loads pipeline via workflow_entrypoint, fires tasks
+│   ├── grader.py                  ← rule-based + LLM judge scoring per task
 │   ├── scorer.py                  ← Pass@k logic, compliance tiers
-│   ├── rubrics.py                 ← scoring rubric definitions (V2: designer UI)
-│   ├── scheduler.py               ← max-flow scheduler for auto-run
-│   └── report.py                  ← generates scorecard JSON
+│   ├── rubrics.py                 ← scoring rubric definitions
+│   ├── scheduler.py               ← orchestrates multi-model benchmark runs
+│   └── report.py                  ← generates scorecard JSON / markdown
 │
-├── results/                       ← run outputs (gitignored)
-│   ├── runs.jsonl                 ← checkpoint log
-│   └── {run_id}/
-│       ├── scorecard.json
-│       └── grader_output.json
+├── results/                       ← raw run output (gitignored)
 │
-├── dashboard/
-│   └── app.py                     ← Streamlit leaderboard
-│
-└── tests/
-    └── test_scorer.py
+└── dashboard/
+    └── app.py                     ← Streamlit leaderboard
 ```
 
 ### Security & Privacy
