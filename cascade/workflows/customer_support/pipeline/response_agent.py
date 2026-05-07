@@ -13,7 +13,7 @@ import boto3
 from langchain_aws import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from pipeline.state import PipelineState
+from workflows.customer_support.pipeline.state import PipelineState
 
 SYSTEM_PROMPT = """You are a professional customer support agent. Using the provided context documents, generate a helpful, accurate, and appropriately-toned response to the customer query.
 
@@ -46,7 +46,7 @@ def _format_context(docs: list[dict]) -> str:
 def generate_response(state: PipelineState) -> PipelineState:
     llm = ChatBedrock(
         client=boto3.client("bedrock-runtime", region_name="us-east-1"),
-        model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+        model_id="us.anthropic.claude-sonnet-4-6",
         model_kwargs={"max_tokens": 1024, "temperature": 0.1},
     )
 

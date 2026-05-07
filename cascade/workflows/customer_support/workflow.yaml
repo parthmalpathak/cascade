@@ -2,11 +2,16 @@
 # The Query Agent reads this file to understand how agents are connected
 # before generating the benchmark test suite.
 #
+# mode: high_code  — pipeline/ dir exists; runner dynamically loads pipeline_entrypoint
+# mode: no_code    — no pipeline/ dir; Generic Agent Executor builds agents from manifests
+#
 # V1 supports linear chains only. Branching workflows are V2.
 
 name: enterprise-customer-support
 description: "3-stage customer support pipeline: intent classification → knowledge retrieval → response generation"
 version: "1.0"
+mode: high_code
+pipeline_entrypoint: "workflows.customer_support.pipeline.pipeline:run_pipeline"
 
 agents:
   - id: routing_agent

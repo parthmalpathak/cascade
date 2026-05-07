@@ -14,7 +14,7 @@ Teams building multi-agent LLM pipelines have no systematic way to know whether 
 
 ### Proposed Solution
 
-Cascade is a local-first, agent-agnostic benchmarking framework. It wraps around any multi-agent pipeline, auto-generates a test suite tuned to each agent's role, runs systematic model-combination experiments, and produces a per-stage leaderboard with a SHIP / CONDITIONAL / HOLD verdict. The reference implementation is a 3-stage enterprise customer support pipeline (Routing → RAG → Response), which ships with the repo and proves the framework end-to-end.
+Cascade is a local-first, agent-agnostic benchmarking framework. Describe your agents in manifest files, and Cascade auto-generates a tailored test suite, runs systematic model-combination experiments, and produces a per-stage leaderboard with a SHIP / CONDITIONAL / HOLD verdict. It works for any pipeline regardless of origin — LangGraph code, ChatGPT Custom GPTs, Microsoft Copilot agents, or any platform where agent instructions can be extracted to a manifest. The reference implementation is a 3-stage enterprise customer support pipeline (Routing → RAG → Response), built in LangGraph and shipped with the repo.
 
 ### Success Criteria
 
@@ -34,7 +34,8 @@ Cascade is a local-first, agent-agnostic benchmarking framework. It wraps around
 
 | Persona | Role | Technical Level | Goal |
 |---------|------|----------------|------|
-| **The Deployer** | AI PM / ML engineer who owns a live multi-agent pipeline | Comfortable with Python and LLM APIs; not a researcher | Wants to know: "Is my current model combination optimal? Where is my pipeline breaking?" |
+| **The Deployer** | AI PM / ML engineer who owns a live multi-agent pipeline built in code (LangGraph, custom Python) | Comfortable with Python and LLM APIs; not a researcher | Wants to know: "Is my current model combination optimal? Where is my pipeline breaking?" |
+| **The Migrator** | AI PM or ops lead who built a multi-agent workflow on a no-code platform (ChatGPT Custom GPTs, Microsoft Copilot Studio) and is locked into that platform's model choice | Can copy-paste agent instructions and export knowledge files; not writing pipeline code | Wants to evaluate: "Would this workflow perform better if I migrated to Claude or a different model combination?" |
 | **The Learner** | Developer or PM new to multi-agent AI | Knows prompting; unfamiliar with eval frameworks | Wants to understand how model choice and hyperparameter tuning affect real pipeline outputs — uses the reference customer support pipeline as their sandbox |
 
 ---
@@ -43,10 +44,14 @@ Cascade is a local-first, agent-agnostic benchmarking framework. It wraps around
 
 #### Epic 1 — Plug In Your Workflow
 
-**US-1.1** — As a Deployer, I want to register my agent workflow by writing `agent_manifest.json` files so that Cascade understands my pipeline without requiring code changes.
+**US-1.1** — As a Deployer or Migrator, I want to register my agent workflow by writing `agent_manifest.json` files so that Cascade understands my pipeline without requiring code changes.
 
 *Acceptance Criteria:*
-- [ ] A `agent_manifest.json` schema is documented with required fields: `agent_id`, `role_description`, `input_schema`, `output_schema`, `system_prompt` (optional), `constraints` (optional)
+- [ ] A `agent_manifest.json` schema is documented with the following fields:
+  - **Required:** `agent_id`, `role_description`, `input_schema`, `output_schema`
+  - **Required for native execution:** `platform` (one of: `langgraph`, `chatgpt_custom_gpt`, `copilot_studio`, `custom`), `system_prompt` (full text — copied verbatim from the platform)
+  - **Optional:** `knowledge_base_path` (directory of knowledge files — Cascade builds a FAISS index from these for native execution), `constraints`, `eval_focus`
+  - **Code-based only:** `pipeline_entrypoint` (Python dotted path + function, e.g. `examples.customer_support.pipeline.pipeline:run_pipeline`) — when set, Cascade delegates execution to this function instead of running natively; `system_prompt` in the manifest is then used only by the Query Agent for test generation context
 - [ ] Cascade CLI validates the manifest on load and surfaces schema errors before any run starts
 - [ ] A manifest with missing required fields produces a human-readable error, not a stack trace
 - [ ] The reference customer support pipeline ships with pre-written manifests for all 3 agents as examples
@@ -154,6 +159,7 @@ Cascade is a local-first, agent-agnostic benchmarking framework. It wraps around
 - **No model fine-tuning** — Cascade evaluates model inference only; no training loop
 - **No mobile / responsive dashboard** — desktop browser only
 - **No streaming eval results** — scores are written after a full run completes, not token-by-token
+- **No replication of agent actions/plugins** — Cascade evaluates the LLM reasoning layer only; mid-conversation tool calls (ChatGPT plugin actions, Copilot Studio connectors, API integrations) are not executed in native mode; pipelines that rely heavily on external tool calls will produce lower-fidelity benchmark results
 
 ---
 
@@ -170,6 +176,14 @@ Cascade is a local-first, agent-agnostic benchmarking framework. It wraps around
 
 ### Pipeline Design
 
+**Execution modes** — determined per-agent by the manifest:
+
+- **Native mode (default):** Cascade constructs the agent from `system_prompt` + optional `knowledge_base_path` (FAISS-indexed on first run), then calls the model specified in `run_config.yaml` directly via Anthropic / OpenAI / Google AI API. This is how Migrators use Cascade — they copy their ChatGPT or Copilot agent instructions into the manifest, upload knowledge files, and Cascade runs the agent against different models without any code.
+- **Entrypoint mode (code-based):** When `pipeline_entrypoint` is set in the manifest, Cascade dynamically imports and calls `run_pipeline(query: str, task_id: str) → dict` from the user's codebase. The manifest's `system_prompt` is used only by the Query Agent for test generation context; Cascade does not construct the agent itself. The reference customer support pipeline uses this mode.
+
+**Platform limitation:** Native mode reconstructs the LLM reasoning layer only. Agent actions and mid-conversation tool calls (ChatGPT plugin actions, Copilot connectors) are not replicated. This is a known V1 constraint — see Non-Goals.
+
+**Other constraints:**
 - **Query Agent context budget**: Must fit full `workflow.yaml` + all `agent_manifest.json` files within a single Claude API call. Design constraint: total manifest + workflow YAML must not exceed 50k tokens.
 - **Query Agent output format**: Structured JSON (`task_suite.json`) via tool use / structured output — no free-text parsing.
 - **Grader Agent invocation**: Called once per agent output per task. Not called end-to-end — per-node scoring is the requirement.
@@ -242,42 +256,48 @@ Max-Flow Scheduler (N workers, configurable)
 |-----------|------------|---------|
 | Query Agent | Anthropic API | Claude Sonnet, tool use / structured output mode |
 | Grader Agent | Anthropic API | Claude Sonnet, temperature 0 |
-| Reference pipeline | AWS Bedrock | Claude, GPT-4o (via Bedrock), Titan Embed |
-| External model support | OpenAI API, Google AI API | Swappable via `run_config.yaml` model ID |
-| Vector store | FAISS (local) | Index persisted to `data/knowledge_base/faiss_index/` |
+| Reference pipeline (entrypoint mode) | AWS Bedrock | Claude, GPT-4o (via Bedrock), Titan Embed |
+| Native mode — model APIs | Anthropic API, OpenAI API, Google AI API | Swappable per-agent via `run_config.yaml` model ID |
+| ChatGPT Custom GPTs | User provides: system prompt (copy-paste) + knowledge files (upload) | Cascade runs in native mode — no ChatGPT API access required |
+| Microsoft Copilot Studio | User provides: agent instructions (copy-paste) + knowledge files (export) | Cascade runs in native mode — no Copilot API access required |
+| Vector store (native mode) | FAISS (local) | Index built from `knowledge_base_path` on first run, cached locally |
 | Dashboard | Streamlit (local) | Reads from `results/` directory, 5s polling |
 
 ### File Structure
 
 ```
 cascade/
-├── CLAUDE.md
 ├── PRD.md
 ├── README.md
 │
-├── manifests/                     ← agent_manifest.json files live here
+├── manifests/                     ← active workflow's agent manifests (one set per workflow)
 │   ├── routing_agent.json
 │   ├── rag_agent.json
 │   └── response_agent.json
 │
 ├── workflow.yaml                  ← declares agent chain and data flow
 │
-├── pipeline/                      ← reference implementation (LangGraph)
-│   ├── routing_agent.py
-│   ├── rag_agent.py
-│   ├── response_agent.py
-│   ├── pipeline.py
-│   └── state.py
+├── examples/
+│   └── customer_support/          ← reference implementation (LangGraph, high-code)
+│       ├── pipeline/
+│       │   ├── routing_agent.py
+│       │   ├── rag_agent.py
+│       │   ├── response_agent.py
+│       │   ├── pipeline.py
+│       │   └── state.py
+│       └── data/
+│           └── knowledge_base/
+│               └── documents.json
 │
 ├── query_agent/
-│   └── generator.py               ← Query Agent: reads manifests, generates task_suite.json
+│   └── generator.py               ← Query Agent: reads manifests + workflow.yaml, generates task_suite.json
 │
 ├── tasks/
-│   ├── task_suite_v1.json         ← versioned, human-reviewed test suite
+│   ├── task_suite_v1.json         ← versioned, human-reviewed test suite (Query Agent output)
 │   └── schema.md                  ← task format spec
 │
 ├── eval/
-│   ├── runner.py                  ← fires tasks, captures per-node outputs
+│   ├── runner.py                  ← fires tasks; native mode or calls pipeline_entrypoint
 │   ├── grader.py                  ← Grader Agent: scores per node
 │   ├── scorer.py                  ← Pass@k logic, compliance tiers
 │   ├── rubrics.py                 ← scoring rubric definitions (V2: designer UI)

@@ -171,7 +171,7 @@ tr:hover td { background: #F9FAFB; }
 
     <div class="card" style="border-left: 4px solid #059669;">
       <div class="card-title">Solution</div>
-      <div class="card-sub">Cascade is a local-first, agent-agnostic benchmarking framework. It reads your pipeline's agent manifests, auto-generates a tailored test suite, runs systematic model-combination experiments with per-stage scoring, and produces a leaderboard with SHIP / CONDITIONAL / HOLD verdicts. A 3-stage customer support pipeline ships as the reference implementation.</div>
+      <div class="card-sub">Cascade is a local-first, agent-agnostic benchmarking framework. Describe your agents in manifest files, and Cascade auto-generates a tailored test suite, runs systematic model-combination experiments with per-stage scoring, and produces a leaderboard with SHIP / CONDITIONAL / HOLD verdicts. Works for any pipeline origin — LangGraph code, ChatGPT Custom GPTs, Microsoft Copilot agents, or any platform where agent instructions can be copied to a manifest. A 3-stage customer support pipeline built in LangGraph ships as the reference implementation.</div>
     </div>
 
     <div class="kpi-grid">
@@ -275,15 +275,23 @@ tr:hover td { background: #F9FAFB; }
   <!-- 4. Personas -->
   <div class="section" id="personas">
     <div class="section-title">Users</div>
-    <div class="section-sub">Two primary personas with different entry points.</div>
-    <div class="persona-grid">
+    <div class="section-sub">Three personas — code-based pipelines, no-code platforms, and learners.</div>
+    <div class="persona-grid" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
       <div class="persona">
         <div class="persona-role">Primary User</div>
         <div class="persona-name">The Deployer</div>
-        <div class="persona-attr"><strong>Role:</strong> AI PM or ML engineer who owns a live multi-agent pipeline</div>
+        <div class="persona-attr"><strong>Role:</strong> AI PM or ML engineer who owns a live multi-agent pipeline built in code (LangGraph, custom Python)</div>
         <div class="persona-attr"><strong>Technical level:</strong> Comfortable with Python and LLM APIs; not a researcher</div>
         <div class="persona-attr"><strong>Goal:</strong> "Is my current model combination optimal? Where is my pipeline breaking?"</div>
         <div style="margin-top:10px;"><span class="tag tag-blue">Writes manifests</span> <span class="tag tag-blue">Reviews test suite</span> <span class="tag tag-blue">Reads leaderboard</span></div>
+      </div>
+      <div class="persona">
+        <div class="persona-role">Primary User</div>
+        <div class="persona-name">The Migrator</div>
+        <div class="persona-attr"><strong>Role:</strong> AI PM or ops lead who built a workflow on a no-code platform (ChatGPT Custom GPTs, Microsoft Copilot Studio) and is locked into that platform's model choice</div>
+        <div class="persona-attr"><strong>Technical level:</strong> Can copy-paste agent instructions and export knowledge files; not writing pipeline code</div>
+        <div class="persona-attr"><strong>Goal:</strong> "Would this workflow perform better if I migrated to Claude or a different model combination?"</div>
+        <div style="margin-top:10px;"><span class="tag tag-green">Pastes system prompts</span> <span class="tag tag-green">Uploads knowledge base</span> <span class="tag tag-green">Compares models</span></div>
       </div>
       <div class="persona">
         <div class="persona-role">Secondary User</div>
@@ -303,11 +311,15 @@ tr:hover td { background: #F9FAFB; }
 
     <div class="card">
       <div class="card-title">Epic 1 — Plug In Your Workflow</div>
-      <div style="font-size:13px;color:#374151;margin-top:8px;">As a Deployer, I want to register my agent workflow via <code>agent_manifest.json</code> files so that Cascade understands my pipeline without requiring code changes.</div>
+      <div style="font-size:13px;color:#374151;margin-top:8px;">As a Deployer or Migrator, I want to register my agent workflow via <code>agent_manifest.json</code> files so that Cascade understands my pipeline without requiring code changes.</div>
       <div style="margin-top:10px;font-size:12px;color:#6B7280;">
-        ✓ Schema documented with required fields: agent_id, role_description, input_schema, output_schema, system_prompt, constraints<br>
+        ✓ Schema with required fields: <code>agent_id</code>, <code>role_description</code>, <code>input_schema</code>, <code>output_schema</code><br>
+        ✓ <code>platform</code>: one of <code>langgraph</code>, <code>chatgpt_custom_gpt</code>, <code>copilot_studio</code>, <code>custom</code><br>
+        ✓ <code>system_prompt</code>: full text — copied verbatim from the platform (used by Query Agent for test generation; also drives native execution)<br>
+        ✓ <code>knowledge_base_path</code> (optional): directory of knowledge files — Cascade builds a FAISS index for native execution<br>
+        ✓ <code>pipeline_entrypoint</code> (code-based only): Python dotted path, e.g. <code>examples.customer_support.pipeline.pipeline:run_pipeline</code> — overrides native execution<br>
         ✓ CLI validates manifest on load — schema errors before any run starts<br>
-        ✓ Reference pipeline ships with 3 pre-written manifests as examples<br>
+        ✓ Reference customer support pipeline ships with 3 pre-written manifests as examples<br>
         ✓ workflow.yaml declares execution order and state passed between agents
       </div>
     </div>
@@ -366,6 +378,7 @@ tr:hover td { background: #F9FAFB; }
       <div class="nongoal"><div class="nongoal-x">✗</div><div>Rubric designer UI — file-based configuration only</div></div>
       <div class="nongoal"><div class="nongoal-x">✗</div><div>Model fine-tuning — inference evaluation only</div></div>
       <div class="nongoal"><div class="nongoal-x">✗</div><div>Mobile / responsive dashboard — desktop browser only</div></div>
+      <div class="nongoal"><div class="nongoal-x">✗</div><div><strong>Agent actions / plugins not replicated in native mode</strong> — Cascade evaluates the LLM reasoning layer only; mid-conversation tool calls (ChatGPT plugin actions, Copilot connectors, API integrations) are not executed; pipelines that rely heavily on external tool calls will produce lower-fidelity benchmark results</div></div>
     </div>
   </div>
 
@@ -383,6 +396,20 @@ tr:hover td { background: #F9FAFB; }
         <tr><td><strong>Embeddings</strong></td><td>Amazon Titan Embed Text v1</td><td><span class="tag tag-green">Fixed</span></td><td>Reference impl. only; manifest-configurable for external workflows.</td></tr>
       </tbody>
     </table>
+
+    <div style="font-weight:700;font-size:13px;color:#374151;margin:20px 0 10px;">Execution Modes</div>
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px;">
+        <div>
+          <div style="font-weight:700;color:#2563EB;margin-bottom:6px;">Native Mode (default)</div>
+          <div style="color:#374151;">Cascade constructs the agent from <code>system_prompt</code> + optionally indexes <code>knowledge_base_path</code> into FAISS. Calls the model specified in <code>run_config.yaml</code> directly via API. <strong>How Migrators use Cascade</strong> — paste ChatGPT or Copilot instructions into the manifest, upload knowledge files, benchmark across models without writing code.</div>
+        </div>
+        <div>
+          <div style="font-weight:700;color:#7C3AED;margin-bottom:6px;">Entrypoint Mode (code-based)</div>
+          <div style="color:#374151;">When <code>pipeline_entrypoint</code> is set, Cascade calls <code>run_pipeline(query, task_id) → dict</code> from the user's codebase. Cascade does not construct the agent — the manifest's <code>system_prompt</code> is used only by the Query Agent for test generation context. <strong>Used by the reference customer support pipeline.</strong></div>
+        </div>
+      </div>
+    </div>
 
     <div style="font-weight:700;font-size:13px;color:#374151;margin:20px 0 10px;">Evaluation Targets</div>
     <table>
@@ -404,15 +431,18 @@ tr:hover td { background: #F9FAFB; }
     <div class="section-sub">Stack, integrations, and performance targets.</div>
 
     <table style="margin-bottom:24px;">
-      <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+      <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
       <tbody>
-        <tr><td>Agent orchestration</td><td>LangGraph</td></tr>
-        <tr><td>Model access (pipeline agents)</td><td>AWS Bedrock + OpenAI API + Google AI API</td></tr>
-        <tr><td>Query Agent + Grader</td><td>Anthropic API (Claude Sonnet, fixed)</td></tr>
-        <tr><td>Vector store</td><td>FAISS (local)</td></tr>
-        <tr><td>Dashboard</td><td>Streamlit (local)</td></tr>
-        <tr><td>Config format</td><td>YAML (workflow, run config) + JSON (manifests, task suite)</td></tr>
-        <tr><td>Checkpoint log</td><td>JSONL (runs.jsonl — append-only)</td></tr>
+        <tr><td>Agent orchestration (reference impl.)</td><td>LangGraph</td><td>Entrypoint mode only</td></tr>
+        <tr><td>Model access — native mode</td><td>Anthropic API · OpenAI API · Google AI API</td><td>Swappable per agent via <code>run_config.yaml</code></td></tr>
+        <tr><td>Model access — reference pipeline</td><td>AWS Bedrock</td><td>Claude, GPT-4o (via Bedrock), Titan Embed</td></tr>
+        <tr><td>Query Agent + Grader</td><td>Anthropic API (Claude Sonnet, fixed)</td><td>Never benchmarked — avoids circularity</td></tr>
+        <tr><td>ChatGPT Custom GPTs</td><td>Copy-paste system prompt + knowledge upload</td><td>Native mode — no ChatGPT API access required</td></tr>
+        <tr><td>Microsoft Copilot Studio</td><td>Copy-paste instructions + knowledge file export</td><td>Native mode — no Copilot API access required</td></tr>
+        <tr><td>Vector store</td><td>FAISS (local)</td><td>Built from <code>knowledge_base_path</code> on first run, cached</td></tr>
+        <tr><td>Dashboard</td><td>Streamlit (local)</td><td>5s polling from <code>results/</code></td></tr>
+        <tr><td>Config format</td><td>YAML (workflow, run config) + JSON (manifests, task suite)</td><td></td></tr>
+        <tr><td>Checkpoint log</td><td>JSONL (<code>runs.jsonl</code> — append-only)</td><td>Enables auto-run resume</td></tr>
       </tbody>
     </table>
 

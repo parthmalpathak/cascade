@@ -15,7 +15,7 @@ from langchain_aws import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 
-from pipeline.state import PipelineState
+from workflows.customer_support.pipeline.state import PipelineState
 
 INTENT_LABELS = Literal["billing", "technical", "policy", "refund", "escalation"]
 
@@ -41,7 +41,7 @@ def build_routing_agent() -> ChatBedrock:
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
     return ChatBedrock(
         client=client,
-        model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+        model_id="us.anthropic.claude-sonnet-4-6",
         model_kwargs={"max_tokens": 512, "temperature": 0},
     )
 

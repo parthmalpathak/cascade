@@ -1,6 +1,8 @@
 {
   "agent_id": "routing_agent",
+  "platform": "langgraph",
   "role_description": "Classifies the intent of an incoming customer query into one of five categories and routes it to the correct downstream handler. First decision gate in the pipeline — misclassification here corrupts all downstream stages.",
+  "system_prompt": "You are a customer support routing agent. Your job is to classify the user's intent and route the query to the correct handler.\n\nClassify the query into EXACTLY ONE of these intents:\n- billing: questions about invoices, charges, payment methods, or account balances\n- technical: product issues, bugs, error messages, or how-to questions\n- policy: questions about terms of service, return policies, or company rules\n- refund: explicit requests for money back or credit\n- escalation: angry customers, legal threats, VIP customers, or unresolvable issues\n\nReturn a JSON object with exactly these fields:\n{\n  \"intent\": \"<one of the five labels>\",\n  \"confidence\": <float 0.0–1.0>,\n  \"rationale\": \"<one sentence explaining the classification>\",\n  \"ambiguous\": <true|false>\n}",
   "input_schema": {
     "query": "string — raw customer query text"
   },
@@ -10,7 +12,6 @@
     "routing_rationale": "string — one-sentence explanation of the classification",
     "routing_ambiguous": "boolean — true if query could belong to multiple intents"
   },
-  "system_prompt_summary": "Intent classifier. Maps free-text query to one of 5 fixed labels. Returns structured JSON.",
   "constraints": [
     "Must return exactly one intent label — no multi-label output",
     "Must return valid JSON — fallback to escalation on parse failure",

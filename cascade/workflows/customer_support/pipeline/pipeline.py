@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from langgraph.graph import END, StateGraph
 
-from pipeline.rag_agent import retrieve_context
-from pipeline.response_agent import generate_response
-from pipeline.routing_agent import route_query
-from pipeline.state import PipelineState
+from workflows.customer_support.pipeline.rag_agent import retrieve_context
+from workflows.customer_support.pipeline.response_agent import generate_response
+from workflows.customer_support.pipeline.routing_agent import route_query
+from workflows.customer_support.pipeline.state import PipelineState
 
 
 def build_pipeline() -> StateGraph:

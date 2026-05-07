@@ -4,5 +4,6 @@ __pycache__/
 *.pyo
 .pytest_cache/
 results/
-data/knowledge_base/faiss_index/
+**/faiss_index/
 .DS_Store
+.claude/

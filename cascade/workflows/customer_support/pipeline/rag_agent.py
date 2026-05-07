@@ -19,7 +19,7 @@ from langchain_aws import BedrockEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
-from pipeline.state import PipelineState
+from workflows.customer_support.pipeline.state import PipelineState
 
 KB_PATH = Path(__file__).parent.parent / "data" / "knowledge_base"
 FAISS_INDEX_PATH = KB_PATH / "faiss_index"
