@@ -6,6 +6,8 @@ Cascade answers one question before you ship an agent pipeline: *is this product
 
 Works for any pipeline — LangGraph code, ChatGPT Custom GPTs, Microsoft Copilot agents, or anything where agent instructions can be written to a manifest file.
 
+**Documentation:** [PRD](docs/PRD.md)
+
 ---
 
 ## How It Works
@@ -179,8 +181,6 @@ cascade/
 
 ---
 
-## Owner
+## Author
 
-**Parth Malpathak** · parthmalpathak@gmail.com
-
-3+ years building and governing enterprise AI agents at Cummins Inc. (20+ agents, 3,000+ users). Cascade generalizes that experience into an open, reproducible framework.
+Parth Malpathak
