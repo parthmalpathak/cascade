@@ -19,8 +19,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-RESULTS_DIR = Path(__file__).parent.parent / "results"
+CASCADE_ROOT = Path(__file__).parent.parent
+RESULTS_DIR = CASCADE_ROOT / "results"
 CHECKPOINT_PATH = RESULTS_DIR / "runs.jsonl"
+DEFAULT_WORKFLOW = CASCADE_ROOT / "workflows" / "customer_support" / "workflow.yaml"
 
 # Rough estimate: ~8s per task on Bedrock + ~3s LLM grading per task
 _SECONDS_PER_TASK = 11
@@ -74,6 +76,7 @@ def _run_one(
     pass_k: int,
     task_suite_path: Path,
     use_llm_judge: bool,
+    workflow_path: Path = DEFAULT_WORKFLOW,
 ) -> dict[str, Any]:
     # Deferred imports keep the main thread startup fast
     from eval.runner import run_suite
@@ -87,6 +90,7 @@ def _run_one(
         pass_k=pass_k,
         model_tag=model_tag,
         task_suite_path=task_suite_path,
+        workflow_path=workflow_path,
     )
 
     raw_path = RESULTS_DIR / f"{raw_record['run_id']}_{model_tag}_raw.json"
@@ -108,6 +112,7 @@ def run_schedule(
     config_path: Path | None = None,
     task_suite_path: Path | None = None,
     skip_confirmation: bool = False,
+    workflow_path: Path = DEFAULT_WORKFLOW,
 ) -> None:
     from eval.runner import load_tasks, _latest_task_suite
 
@@ -154,7 +159,7 @@ def run_schedule(
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(_run_one, model, pass_k, suite_path, use_llm_judge): model["tag"]
+            executor.submit(_run_one, model, pass_k, suite_path, use_llm_judge, workflow_path): model["tag"]
             for model in pending
         }
         for future in as_completed(futures):
@@ -185,10 +190,17 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=str, default=None, help="Path to auto_run_config.yaml")
     parser.add_argument("--task-suite", type=str, default=None, help="Path to task_suite_vN.json")
     parser.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
+    parser.add_argument(
+        "--workflow",
+        type=str,
+        default=str(DEFAULT_WORKFLOW),
+        help="Path to workflow.yaml",
+    )
     args = parser.parse_args()
 
     run_schedule(
         config_path=Path(args.config) if args.config else None,
         task_suite_path=Path(args.task_suite) if args.task_suite else None,
         skip_confirmation=args.yes,
+        workflow_path=Path(args.workflow),
     )

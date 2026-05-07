@@ -8,16 +8,12 @@ and returns a routing decision to pass downstream.
 from __future__ import annotations
 
 import json
-from typing import Literal
 
 import boto3
 from langchain_aws import ChatBedrock
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END, StateGraph
 
 from workflows.customer_support.pipeline.state import PipelineState
-
-INTENT_LABELS = Literal["billing", "technical", "policy", "refund", "escalation"]
 
 SYSTEM_PROMPT = """You are a customer support routing agent. Your job is to classify the user's intent and route the query to the correct handler.
 
@@ -73,9 +69,3 @@ def route_query(state: PipelineState) -> PipelineState:
     }
 
 
-def build_routing_graph() -> StateGraph:
-    graph = StateGraph(PipelineState)
-    graph.add_node("route", route_query)
-    graph.set_entry_point("route")
-    graph.add_edge("route", END)
-    return graph.compile()

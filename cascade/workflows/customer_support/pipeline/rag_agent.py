@@ -83,15 +83,17 @@ def retrieve_context(state: PipelineState) -> PipelineState:
     retrieval_scores = []
     citations = []
 
-    for doc, score in results:
+    for doc, l2_distance in results:
+        # FAISS returns L2 distances (lower = more similar). Convert to [0,1] similarity.
+        similarity = round(1.0 / (1.0 + float(l2_distance)), 4)
         retrieved_docs.append({
             "content": doc.page_content,
             "title": doc.metadata.get("title", ""),
             "category": doc.metadata.get("category", ""),
             "doc_id": doc.metadata.get("id", ""),
-            "score": float(score),
+            "score": similarity,
         })
-        retrieval_scores.append(float(score))
+        retrieval_scores.append(similarity)
         citations.append(doc.metadata.get("title", doc.metadata.get("id", "")))
 
     return {
