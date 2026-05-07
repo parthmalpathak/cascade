@@ -132,6 +132,6 @@ Cost/latency benchmarking and rubric designer are V2.
 
 ## Owner
 
-[Parth Malpathak](mailto:parthmalpathak@gmail.com) — 3+ years building and governing enterprise AI agents at Cummins Inc. (20+ agents, 3,000+ users).
+[Parth Malpathak](mailto:parthmalpathak@gmail.com)
 
 [Read the full PRD →](cascade/PRD.md)
