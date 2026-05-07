@@ -134,4 +134,4 @@ Cost/latency benchmarking and rubric designer are V2.
 
 [Parth Malpathak](mailto:parthmalpathak@gmail.com)
 
-[Read the full PRD →](cascade/PRD.md)
+[Read the full PRD →](cascade/docs/PRD.md)
