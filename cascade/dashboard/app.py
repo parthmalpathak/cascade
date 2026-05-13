@@ -59,16 +59,18 @@ st.header("Leaderboard")
 
 rows = []
 for sc in scorecards:
-    lb = sc["leaderboard_row"]
+    lb = sc.get("leaderboard_row", {})
+    if not lb:
+        continue
     rows.append({
-        "Model": lb["model"],
-        "Routing": pct(lb["routing"]),
-        "Retrieval": pct(lb["retrieval"]),
-        "Response": pct(lb["response"]),
-        "Pipeline": pct(lb["pipeline"]),
-        "Compliance": pct(lb["compliance"]),
-        "Verdict": _VERDICT_LABEL.get(lb["verdict"], lb["verdict"]),
-        "Run ID": sc["run_id"],
+        "Model": lb.get("model", "unknown"),
+        "Routing": pct(lb.get("routing", 0.0)),
+        "Retrieval": pct(lb.get("retrieval", 0.0)),
+        "Response": pct(lb.get("response", 0.0)),
+        "Pipeline": pct(lb.get("pipeline", 0.0)),
+        "Compliance": pct(lb.get("compliance", 0.0)),
+        "Verdict": _VERDICT_LABEL.get(lb.get("verdict", ""), lb.get("verdict", "")),
+        "Run ID": sc.get("run_id", ""),
     })
 
 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
@@ -83,7 +85,7 @@ st.info(
 st.divider()
 st.header("Model Drilldown")
 
-model_options = [sc["model"] for sc in scorecards]
+model_options = list(dict.fromkeys(sc["model"] for sc in scorecards))
 selected = st.selectbox("Select model", options=model_options)
 sc = next(s for s in scorecards if s["model"] == selected)
 s = sc["summary"]

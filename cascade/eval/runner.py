@@ -133,6 +133,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pass-k", type=int, default=1)
     parser.add_argument("--model", type=str, default="claude-sonnet-4-6")
+    parser.add_argument("--provider", type=str, default="bedrock",
+                        help="LLM provider: anthropic | openai | bedrock")
+    parser.add_argument("--embedding-provider", type=str, default="bedrock",
+                        help="Embedding provider: bedrock | openai")
+    parser.add_argument("--embedding-model-id", type=str,
+                        default="amazon.titan-embed-text-v1",
+                        help="Embedding model ID")
     parser.add_argument("--task-suite", type=str, default=None)
     parser.add_argument(
         "--workflow",
@@ -142,9 +149,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    model_config = {
+        "provider": args.provider,
+        "model_id": args.model,
+        "embedding_provider": args.embedding_provider,
+        "embedding_model_id": args.embedding_model_id,
+    }
+
     run_suite(
         pass_k=args.pass_k,
         model_tag=args.model,
+        model_config=model_config,
         task_suite_path=Path(args.task_suite) if args.task_suite else None,
         workflow_path=Path(args.workflow),
     )

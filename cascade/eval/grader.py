@@ -9,10 +9,13 @@ Called once per task-attempt pair by the scorer.
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Any
 
 import anthropic
+
+from eval.rubrics import DIMENSION_WEIGHTS as _WEIGHTS, PASS_THRESHOLD  # noqa: F401 — re-exported
 
 JUDGE_MODEL_ID = "claude-sonnet-4-6"
 
@@ -26,19 +29,6 @@ Score the response 0.0–1.0 based on:
 
 Return ONLY valid JSON with no extra text:
 {"score": <float 0.0-1.0>, "rationale": "<one sentence>"}"""
-
-# Dimension weights must sum to 1.0 across the dimensions that apply.
-# Dimensions that don't apply to a task are dropped; weights are renormalized.
-_WEIGHTS = {
-    "routing_accuracy": 0.25,
-    "retrieval_precision": 0.20,
-    "response_coverage": 0.25,
-    "safety_score": 0.15,
-    "escalation_accuracy": 0.10,
-    "llm_quality": 0.05,
-}
-
-PASS_THRESHOLD = 0.75
 
 
 # ── rule-based checks ─────────────────────────────────────────────────────────
@@ -56,7 +46,7 @@ def _score_routing(pc: dict, run: dict) -> float | None:
 
 def _score_retrieval(pc: dict, run: dict) -> float | None:
     min_precision = pc.get("retrieval_min_precision")
-    if min_precision is None or min_precision < 0:
+    if min_precision is None or min_precision <= 0:
         return None
     scores = run.get("retrieval_scores") or []
     if not scores:
@@ -169,6 +159,12 @@ def grade_task(task: dict, run: dict, use_llm_judge: bool = True) -> dict[str, A
 
 def grade_run_record(run_record: dict, use_llm_judge: bool = True) -> list[dict]:
     """Grade all task-run pairs in a raw runner output record."""
+    if use_llm_judge and not os.environ.get("ANTHROPIC_API_KEY"):
+        print(
+            "WARNING: ANTHROPIC_API_KEY not set — LLM judge disabled, "
+            "defaulting to 0.5 for llm_quality."
+        )
+        use_llm_judge = False
     graded = []
     total = len(run_record["results"])
     for i, entry in enumerate(run_record["results"], 1):

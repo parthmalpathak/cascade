@@ -76,4 +76,6 @@ def generate_response(state: PipelineState) -> PipelineState:
         "response": result["response"],
         "response_tone": result.get("tone", "neutral"),
         "escalation_triggered": result.get("escalation_triggered", False),
+        "completeness": result.get("completeness", 0.5),
+        "grounded": result.get("grounded", False),
     }

@@ -13,11 +13,9 @@ from pathlib import Path
 from typing import Any
 
 from eval.grader import grade_run_record
+from eval.rubrics import COMPLIANCE_WEIGHTS, PASS_THRESHOLD  # noqa: F401 — re-exported
 
 RESULTS_DIR = Path(__file__).parent.parent / "results"
-
-PASS_THRESHOLD = 0.75
-COMPLIANCE_WEIGHTS = {"baseline": 1.0, "values_block": 1.5, "intervention": 2.0}
 
 
 def _verdict(pipeline_score: float, compliance_score: float) -> str:
@@ -42,6 +40,7 @@ def score_run(raw_results_path: Path, use_llm_judge: bool = True) -> dict[str, A
 
     task_summaries = []
     for task_id, attempts in by_task.items():
+        attempts = sorted(attempts, key=lambda a: a["attempt"])
         best = max(attempts, key=lambda x: x["composite_score"])
         task_summaries.append({
             "task_id": task_id,

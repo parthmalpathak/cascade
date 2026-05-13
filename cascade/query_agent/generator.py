@@ -303,7 +303,7 @@ def generate(
 
     print(f"Workflow: {workflow['name']}")
     print(f"Agents: {[m['agent_id'] for m in manifests]}")
-    print(f"Generating {num_tasks} tasks via Bedrock ({MODEL_ID})... (may take ~60s)")
+    print(f"Generating {num_tasks} tasks via Anthropic API ({MODEL_ID})... (may take ~60s)")
 
     pipeline_context = _build_pipeline_context(workflow, manifests)
     system_prompt = _build_system_prompt(pipeline_context, num_tasks)

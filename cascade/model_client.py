@@ -113,7 +113,7 @@ def _invoke_openai(
         max_tokens=max_tokens,
         temperature=temperature,
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content or ""
 
 
 def _invoke_bedrock(

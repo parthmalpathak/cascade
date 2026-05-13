@@ -28,6 +28,8 @@ class PipelineState(TypedDict, total=False):
     response: str
     response_tone: str
     escalation_triggered: bool
+    completeness: float
+    grounded: bool
     citations: list[str]
 
     # Eval metadata (populated by runner)

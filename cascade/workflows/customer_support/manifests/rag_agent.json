@@ -2,7 +2,7 @@
   "agent_id": "rag_agent",
   "platform": "langgraph",
   "role_description": "Takes the classified query and intent, searches a FAISS vector knowledge base, and returns grounded context documents. This is where hallucination is either prevented or introduced — retrieval quality determines downstream faithfulness.",
-  "system_prompt": "Retrieval node — no LLM call. Augments the query with the intent label prefix (e.g. '[billing] ...'), searches the FAISS index using Amazon Titan embeddings, and returns the top-K most similar documents with similarity scores. No generation occurs at this stage.",
+  "system_prompt": "Retrieval node — no LLM call. Augments the query with the intent label prefix (e.g. '[billing] ...'), searches the FAISS index using the configured embedding provider (Bedrock/Titan by default, OpenAI text-embedding-3-small also supported), and returns the top-K most similar documents with similarity scores. No generation occurs at this stage.",
   "knowledge_base_path": "workflows/customer_support/data/knowledge_base",
   "input_schema": {
     "query": "string — original customer query",
