@@ -30,16 +30,31 @@ def build_pipeline() -> StateGraph:
     return graph.compile()
 
 
-def run_pipeline(query: str, task_id: str = "") -> PipelineState:
+def run_pipeline(
+    query: str,
+    task_id: str = "",
+    model_config: dict | None = None,
+) -> PipelineState:
     pipeline = build_pipeline()
-    initial_state: PipelineState = {"query": query, "task_id": task_id}
+    config = model_config or {}
+    initial_state: PipelineState = {
+        "query": query,
+        "task_id": task_id,
+        "provider": config.get("provider", "bedrock"),
+        "model_id": config.get("model_id", "us.anthropic.claude-sonnet-4-6"),
+        "embedding_provider": config.get("embedding_provider", "bedrock"),
+        "embedding_model_id": config.get("embedding_model_id", "amazon.titan-embed-text-v1"),
+    }
     return pipeline.invoke(initial_state)
 
 
 if __name__ == "__main__":
     import json
 
-    result = run_pipeline("My invoice shows a charge I don't recognize. Can you help?")
+    result = run_pipeline(
+        query="My invoice shows a charge I don't recognize. Can you help?",
+        model_config={"provider": "anthropic", "model_id": "claude-sonnet-4-6"},
+    )
     print(json.dumps(
         {
             "intent": result.get("intent"),

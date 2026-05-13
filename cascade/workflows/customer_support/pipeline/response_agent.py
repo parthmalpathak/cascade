@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import json
 
-import boto3
-from langchain_aws import ChatBedrock
-from langchain_core.messages import HumanMessage, SystemMessage
-
+from model_client import invoke_llm
 from workflows.customer_support.pipeline.state import PipelineState
 
 SYSTEM_PROMPT = """You are a professional customer support agent. Using the provided context documents, generate a helpful, accurate, and appropriately-toned response to the customer query.
@@ -44,36 +41,30 @@ def _format_context(docs: list[dict]) -> str:
 
 
 def generate_response(state: PipelineState) -> PipelineState:
-    llm = ChatBedrock(
-        client=boto3.client("bedrock-runtime", region_name="us-east-1"),
-        model_id="us.anthropic.claude-sonnet-4-6",
-        model_kwargs={"max_tokens": 1024, "temperature": 0.1},
-    )
-
     context = _format_context(state.get("retrieved_docs", []))
     intent = state.get("intent", "general")
 
-    user_message = f"""Intent: {intent}
+    user_message = (
+        f"Intent: {intent}\n\n"
+        f"Customer Query: {state['query']}\n\n"
+        f"Context Documents:\n{context}\n\n"
+        "Generate the response."
+    )
 
-Customer Query: {state['query']}
-
-Context Documents:
-{context}
-
-Generate the response."""
-
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=user_message),
-    ]
-
-    raw = llm.invoke(messages)
+    response_text = invoke_llm(
+        provider=state.get("provider", "bedrock"),
+        model_id=state.get("model_id", "us.anthropic.claude-sonnet-4-6"),
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
+        max_tokens=1024,
+        temperature=0.1,
+    )
 
     try:
-        result = json.loads(raw.content)
+        result = json.loads(response_text)
     except json.JSONDecodeError:
         result = {
-            "response": raw.content,
+            "response": response_text,
             "tone": "neutral",
             "escalation_triggered": False,
             "completeness": 0.5,

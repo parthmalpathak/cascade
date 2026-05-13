@@ -57,13 +57,14 @@ def run_single_task(
     task: dict,
     run_pipeline,
     attempt: int = 1,
+    model_config: dict | None = None,
 ) -> dict[str, Any]:
     task_id = task["task_id"]
     query = task["prompt"]
 
     start = time.time()
     try:
-        state: dict = run_pipeline(query=query, task_id=task_id)
+        state: dict = run_pipeline(query=query, task_id=task_id, model_config=model_config)
         elapsed = time.time() - start
         return {
             "task_id": task_id,
@@ -87,6 +88,7 @@ def run_single_task(
 def run_suite(
     pass_k: int = 1,
     model_tag: str = "default",
+    model_config: dict | None = None,
     task_suite_path: Path | None = None,
     workflow_path: Path = DEFAULT_WORKFLOW,
 ) -> dict[str, Any]:
@@ -102,7 +104,7 @@ def run_suite(
         task_results = []
         for attempt in range(1, pass_k + 1):
             print(f"  [{task['task_id']}] attempt {attempt}/{pass_k}", end=" ", flush=True)
-            result = run_single_task(task, run_pipeline, attempt=attempt)
+            result = run_single_task(task, run_pipeline, attempt=attempt, model_config=model_config)
             task_results.append(result)
             print("OK" if result["success"] else f"ERROR: {result.get('error', '')}")
         results.append({"task": task, "runs": task_results})

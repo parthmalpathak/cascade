@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import json
 
-import boto3
-from langchain_aws import ChatBedrock
-from langchain_core.messages import HumanMessage, SystemMessage
-
+from model_client import invoke_llm
 from workflows.customer_support.pipeline.state import PipelineState
 
 SYSTEM_PROMPT = """You are a customer support routing agent. Your job is to classify the user's intent and route the query to the correct handler.
@@ -33,25 +30,18 @@ Return a JSON object with exactly these fields:
 }"""
 
 
-def build_routing_agent() -> ChatBedrock:
-    client = boto3.client("bedrock-runtime", region_name="us-east-1")
-    return ChatBedrock(
-        client=client,
-        model_id="us.anthropic.claude-sonnet-4-6",
-        model_kwargs={"max_tokens": 512, "temperature": 0},
+def route_query(state: PipelineState) -> PipelineState:
+    response_text = invoke_llm(
+        provider=state.get("provider", "bedrock"),
+        model_id=state.get("model_id", "us.anthropic.claude-sonnet-4-6"),
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": state["query"]}],
+        max_tokens=512,
+        temperature=0,
     )
 
-
-def route_query(state: PipelineState) -> PipelineState:
-    llm = build_routing_agent()
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=state["query"]),
-    ]
-    response = llm.invoke(messages)
-
     try:
-        result = json.loads(response.content)
+        result = json.loads(response_text)
     except json.JSONDecodeError:
         result = {
             "intent": "escalation",
@@ -67,5 +57,3 @@ def route_query(state: PipelineState) -> PipelineState:
         "routing_rationale": result["rationale"],
         "routing_ambiguous": result.get("ambiguous", False),
     }
-
-

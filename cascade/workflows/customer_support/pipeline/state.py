@@ -7,6 +7,12 @@ class PipelineState(TypedDict, total=False):
     query: str
     task_id: str
 
+    # Model config (set by runner, consumed by pipeline agents)
+    provider: str            # anthropic | openai | bedrock
+    model_id: str            # e.g. claude-sonnet-4-6 / gpt-4o / us.anthropic.claude-sonnet-4-6
+    embedding_provider: str  # bedrock | openai
+    embedding_model_id: str  # e.g. amazon.titan-embed-text-v1 / text-embedding-3-small
+
     # Routing stage outputs
     intent: str
     routing_confidence: float

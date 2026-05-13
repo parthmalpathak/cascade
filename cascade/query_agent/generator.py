@@ -5,8 +5,7 @@ Reads workflow.yaml and all agent manifests to understand the role and contract
 of each agent in the pipeline. Produces a versioned task_suite_vN.json for
 human review before any benchmark run.
 
-Uses AWS Bedrock (Converse API) with tool_choice to force structured output.
-Model: anthropic.claude-3-5-sonnet-20241022-v2:0 (same as pipeline agents).
+Uses Anthropic API with tool_choice to force structured output.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-import boto3
+import anthropic
 import yaml
 
 CASCADE_ROOT = Path(__file__).parent.parent
@@ -25,8 +24,7 @@ DEFAULT_WORKFLOW_PATH = CASCADE_ROOT / "workflows" / "customer_support" / "workf
 TASKS_DIR = CASCADE_ROOT / "tasks"
 
 QUERY_AGENT_VERSION = "query_agent_v1"
-MODEL_ID = "us.anthropic.claude-sonnet-4-6"
-AWS_REGION = "us-east-1"
+MODEL_ID = "claude-sonnet-4-6"
 
 # ── tool schema ────────────────────────────────────────────────────────────────
 
@@ -135,27 +133,23 @@ _TASK_SCHEMA = {
 }
 
 SUBMIT_TASK_SUITE_TOOL = {
-    "toolSpec": {
-        "name": "submit_task_suite",
-        "description": (
-            "Submit the complete benchmark task suite. All tasks must be included in a "
-            "single call. Prompts must be realistic customer queries and pass_criteria "
-            "must be precise enough for automated scoring by a grader agent."
-        ),
-        "inputSchema": {
-            "json": {
-                "type": "object",
-                "properties": {
-                    "tasks": {
-                        "type": "array",
-                        "items": _TASK_SCHEMA,
-                        "description": "All generated benchmark tasks",
-                    }
-                },
-                "required": ["tasks"],
+    "name": "submit_task_suite",
+    "description": (
+        "Submit the complete benchmark task suite. All tasks must be included in a "
+        "single call. Prompts must be realistic customer queries and pass_criteria "
+        "must be precise enough for automated scoring by a grader agent."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "tasks": {
+                "type": "array",
+                "items": _TASK_SCHEMA,
+                "description": "All generated benchmark tasks",
             }
         },
-    }
+        "required": ["tasks"],
+    },
 }
 
 
@@ -314,37 +308,29 @@ def generate(
     pipeline_context = _build_pipeline_context(workflow, manifests)
     system_prompt = _build_system_prompt(pipeline_context, num_tasks)
 
-    client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
-    response = client.converse(
-        modelId=MODEL_ID,
-        system=[{"text": system_prompt}],
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=MODEL_ID,
+        system=system_prompt,
         messages=[
             {
                 "role": "user",
-                "content": [
-                    {
-                        "text": (
-                            f"Generate {num_tasks} benchmark tasks for this pipeline. "
-                            "Call submit_task_suite with all tasks in one call."
-                        )
-                    }
-                ],
+                "content": (
+                    f"Generate {num_tasks} benchmark tasks for this pipeline. "
+                    "Call submit_task_suite with all tasks in one call."
+                ),
             }
         ],
-        toolConfig={
-            "tools": [SUBMIT_TASK_SUITE_TOOL],
-            "toolChoice": {"tool": {"name": "submit_task_suite"}},
-        },
-        inferenceConfig={"maxTokens": 16000},
+        tools=[SUBMIT_TASK_SUITE_TOOL],
+        tool_choice={"type": "tool", "name": "submit_task_suite"},
+        max_tokens=16000,
     )
 
-    # Extract tool use block from Converse response
+    # Extract tool use block from Anthropic response
     tool_use_block = next(
-        block["toolUse"]
-        for block in response["output"]["message"]["content"]
-        if "toolUse" in block
+        block for block in response.content if block.type == "tool_use"
     )
-    tasks: list[dict] = tool_use_block["input"]["tasks"]
+    tasks: list[dict] = tool_use_block.input["tasks"]
 
     # Normalise compliance_tier: convert "none" string → null sentinel for schema consistency
     for task in tasks:

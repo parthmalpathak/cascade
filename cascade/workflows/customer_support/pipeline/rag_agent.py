@@ -8,71 +8,68 @@ and returns grounded context for the response agent.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any
 
-import boto3
-import faiss
-import numpy as np
-from langchain_aws import BedrockEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
+from model_client import get_embeddings
 from workflows.customer_support.pipeline.state import PipelineState
 
 KB_PATH = Path(__file__).parent.parent / "data" / "knowledge_base"
-FAISS_INDEX_PATH = KB_PATH / "faiss_index"
 DOCS_PATH = KB_PATH / "documents.json"
 
 TOP_K = 4
-_vectorstore: FAISS | None = None
+DEFAULT_EMBEDDING_PROVIDER = "bedrock"
+DEFAULT_EMBEDDING_MODEL_ID = "amazon.titan-embed-text-v1"
+
+# Keyed by (embedding_provider, embedding_model_id) to support multiple providers
+_vectorstore_cache: dict[tuple[str, str], FAISS] = {}
 
 
-def _get_embeddings() -> BedrockEmbeddings:
-    client = boto3.client("bedrock-runtime", region_name="us-east-1")
-    return BedrockEmbeddings(
-        client=client,
-        model_id="amazon.titan-embed-text-v1",
-    )
+def _load_or_build_vectorstore(embedding_provider: str, embedding_model_id: str) -> FAISS:
+    cache_key = (embedding_provider, embedding_model_id)
+    if cache_key in _vectorstore_cache:
+        return _vectorstore_cache[cache_key]
 
+    embeddings = get_embeddings(embedding_provider, embedding_model_id)
 
-def _load_or_build_vectorstore() -> FAISS:
-    global _vectorstore
-    if _vectorstore is not None:
-        return _vectorstore
+    # Each provider+model gets its own index so embeddings don't collide
+    safe_model = embedding_model_id.replace("/", "_").replace(".", "_")
+    index_path = KB_PATH / f"faiss_index_{embedding_provider}_{safe_model}"
 
-    embeddings = _get_embeddings()
-
-    if FAISS_INDEX_PATH.exists():
-        _vectorstore = FAISS.load_local(
-            str(FAISS_INDEX_PATH),
+    if index_path.exists():
+        vectorstore = FAISS.load_local(
+            str(index_path),
             embeddings,
             allow_dangerous_deserialization=True,
         )
-        return _vectorstore
+    else:
+        with open(DOCS_PATH) as f:
+            raw_docs = json.load(f)
 
-    with open(DOCS_PATH) as f:
-        raw_docs = json.load(f)
+        documents = [
+            Document(
+                page_content=d["content"],
+                metadata={"id": d["id"], "category": d["category"], "title": d["title"]},
+            )
+            for d in raw_docs
+        ]
 
-    documents = [
-        Document(
-            page_content=d["content"],
-            metadata={"id": d["id"], "category": d["category"], "title": d["title"]},
-        )
-        for d in raw_docs
-    ]
+        vectorstore = FAISS.from_documents(documents, embeddings)
+        vectorstore.save_local(str(index_path))
 
-    _vectorstore = FAISS.from_documents(documents, embeddings)
-    _vectorstore.save_local(str(FAISS_INDEX_PATH))
-    return _vectorstore
+    _vectorstore_cache[cache_key] = vectorstore
+    return vectorstore
 
 
 def retrieve_context(state: PipelineState) -> PipelineState:
     query = state["query"]
     intent = state.get("intent", "general")
+    embedding_provider = state.get("embedding_provider", DEFAULT_EMBEDDING_PROVIDER)
+    embedding_model_id = state.get("embedding_model_id", DEFAULT_EMBEDDING_MODEL_ID)
 
-    vectorstore = _load_or_build_vectorstore()
+    vectorstore = _load_or_build_vectorstore(embedding_provider, embedding_model_id)
 
     results = vectorstore.similarity_search_with_score(
         query=f"[{intent}] {query}",

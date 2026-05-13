@@ -12,10 +12,9 @@ import json
 import re
 from typing import Any
 
-import boto3
+import anthropic
 
-AWS_REGION = "us-east-1"
-JUDGE_MODEL_ID = "us.anthropic.claude-sonnet-4-6"
+JUDGE_MODEL_ID = "claude-sonnet-4-6"
 
 _JUDGE_SYSTEM = """You are a strict benchmark grader evaluating LLM customer support agent outputs.
 
@@ -94,7 +93,7 @@ def _score_escalation(pc: dict, run: dict) -> float | None:
 
 # ── LLM judge ─────────────────────────────────────────────────────────────────
 
-def _llm_judge(task: dict, run: dict, client) -> dict:
+def _llm_judge(task: dict, run: dict) -> dict:
     prompt = (
         f"Query: {task['prompt']}\n\n"
         f"Expected output description: {task['expected_output_hint']}\n\n"
@@ -102,13 +101,15 @@ def _llm_judge(task: dict, run: dict, client) -> dict:
         "Score this response."
     )
     try:
-        resp = client.converse(
-            modelId=JUDGE_MODEL_ID,
-            system=[{"text": _JUDGE_SYSTEM}],
-            messages=[{"role": "user", "content": [{"text": prompt}]}],
-            inferenceConfig={"maxTokens": 256, "temperature": 0},
+        client = anthropic.Anthropic()
+        resp = client.messages.create(
+            model=JUDGE_MODEL_ID,
+            system=_JUDGE_SYSTEM,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=256,
+            temperature=0,
         )
-        text = resp["output"]["message"]["content"][0]["text"]
+        text = resp.content[0].text
         match = re.search(r"\{.*\}", text, re.DOTALL)
         parsed = json.loads(match.group()) if match else {}
         return {
@@ -146,8 +147,7 @@ def grade_task(task: dict, run: dict, use_llm_judge: bool = True) -> dict[str, A
 
     llm_result = None
     if use_llm_judge and run.get("success") and run.get("response"):
-        client = boto3.client("bedrock-runtime", region_name=AWS_REGION)
-        llm_result = _llm_judge(task, run, client)
+        llm_result = _llm_judge(task, run)
         dimension_scores["llm_quality"] = llm_result["score"]
 
     composite = _composite(dimension_scores)

@@ -29,7 +29,27 @@ _SECONDS_PER_TASK = 11
 
 DEFAULT_CONFIG = {
     "models": [
-        {"tag": "claude-sonnet-4-6", "model_id": "us.anthropic.claude-sonnet-4-6"},
+        {
+            "tag": "claude-sonnet-4-6-bedrock",
+            "provider": "bedrock",
+            "model_id": "us.anthropic.claude-sonnet-4-6",
+            "embedding_provider": "bedrock",
+            "embedding_model_id": "amazon.titan-embed-text-v1",
+        },
+        {
+            "tag": "claude-sonnet-4-6-anthropic",
+            "provider": "anthropic",
+            "model_id": "claude-sonnet-4-6",
+            "embedding_provider": "bedrock",
+            "embedding_model_id": "amazon.titan-embed-text-v1",
+        },
+        {
+            "tag": "gpt-4o",
+            "provider": "openai",
+            "model_id": "gpt-4o",
+            "embedding_provider": "openai",
+            "embedding_model_id": "text-embedding-3-small",
+        },
     ],
     "pass_k": 1,
     "max_workers": 2,
@@ -89,6 +109,7 @@ def _run_one(
     raw_record = run_suite(
         pass_k=pass_k,
         model_tag=model_tag,
+        model_config=model_config,
         task_suite_path=task_suite_path,
         workflow_path=workflow_path,
     )
