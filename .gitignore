@@ -19,7 +19,7 @@ cascade/results/
 # Vector store index (rebuilt on first run)
 cascade/data/knowledge_base/faiss_index/
 
-# Claude Code internals
+# Local tooling
 .agents/
 .claude/
 CLAUDE.md

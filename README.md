@@ -17,7 +17,7 @@ Teams building multi-agent pipelines test end-to-end and call it done. But model
 ## What Cascade Does
 
 1. **Reads your pipeline** — you describe each agent in a manifest file. Cascade learns the role, input/output contract, and intent of every node in your workflow.
-2. **Generates a test suite** — a Query Agent (Claude API, fixed) reads your manifests and auto-generates tailored bench tests: happy path, edge cases, adversarial prompts, compliance checks.
+2. **Generates a test suite** — a Query Agent (Anthropic API) reads your manifests and auto-generates tailored bench tests: happy path, edge cases, adversarial prompts, compliance checks.
 3. **You review** — the test suite is a JSON file. You read it, edit it, approve it. No run starts without your sign-off.
 4. **Cascade benchmarks** — the eval runner fires every test through your pipeline with a given model combination, captures intermediate outputs at every agent node, and scores each stage independently.
 5. **Swap models, re-run** — change the model for any agent and re-run. Scores accumulate into a leaderboard.
@@ -46,7 +46,7 @@ A model with 89% accuracy at each of 3 stages produces ~72% end-to-end. The casc
 SETUP (run once)
   agent_manifest.json × N  ─┐
   workflow.yaml              ├──► Query Agent ──► task_suite_vN.json ──► Human Review
-                             │   (Claude API, fixed)
+                             │   (Anthropic API)
 
 BENCHMARK LOOP
   run_config.yaml (model per agent)
@@ -57,7 +57,7 @@ BENCHMARK LOOP
        │
        ▼
   Grader Agent ──► results/{run_id}/ ──► Dashboard (Streamlit, local)
-  (Claude API, fixed)
+  (Anthropic API)
 ```
 
 ---
@@ -127,7 +127,7 @@ Cost/latency benchmarking and rubric designer are V2.
 |-------|-----------|
 | Agent orchestration | LangGraph |
 | Model access | AWS Bedrock + OpenAI / Anthropic APIs |
-| Query Agent + Grader | Anthropic API (Claude Sonnet, fixed) |
+| Query Agent + Grader | Anthropic API |
 | Vector store | FAISS |
 | Dashboard | Streamlit |
 
