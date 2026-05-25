@@ -1,125 +1,59 @@
-# Cascade
+# Cascade — Reference Implementation
 
-**Agent-agnostic benchmarking for multi-stage LLM pipelines.**
+This directory contains all runnable code for Cascade: the Query Agent, eval stack, reference pipeline, and dashboard.
 
-Cascade answers one question before you ship an agent pipeline: *is this production-ready?* It auto-generates a tailored test suite from your agent definitions, runs systematic model experiments, and produces a per-stage leaderboard with a SHIP / CONDITIONAL / HOLD verdict.
-
-Works for any pipeline — LangGraph code, ChatGPT Custom GPTs, Microsoft Copilot agents, or anything where agent instructions can be written to a manifest file.
-
-**Documentation:** [PRD](docs/PRD.md)
+**Project overview and PRD:** [docs/PRD.md](docs/PRD.md)
 
 ---
 
-## How It Works
+## Prerequisites
 
+- Python 3.11+
+- `ANTHROPIC_API_KEY` — required for the Query Agent (task suite generation) and the LLM grader judge
+- AWS credentials (`aws configure`) — required only if benchmarking with the **Bedrock provider**
+- `OPENAI_API_KEY` — required only if benchmarking with the **OpenAI provider**
+
+```bash
+cp .env.example .env
+# Fill in whichever keys apply to your run
 ```
-1. Describe your agents    →  workflow.yaml + manifests/
-2. Generate test suite     →  python -m query_agent.generator --workflow <path>
-3. Run benchmark           →  python -m eval.runner --workflow <path>
-4. View leaderboard        →  streamlit run dashboard/app.py
-```
-
-The **Query Agent** reads your workflow and agent manifests, then uses Claude via AWS Bedrock to generate a domain-appropriate test suite. The **eval stack** fires every task through your pipeline, scores each stage individually and end-to-end, and writes a scorecard JSON. The **dashboard** renders a leaderboard across model combinations.
-
-The key insight: **pipeline score ≠ average of stage scores.** Errors compound. A model scoring 89% at each stage produces ~72% end-to-end. Cascade surfaces where the drops happen.
-
----
-
-## Reference Pipeline
-
-The repo ships with a fully working 3-stage customer support pipeline as the reference implementation:
-
-```
-Raw Query → [Routing Agent] → [RAG Agent] → [Response Agent] → Final Answer
-```
-
-| Agent | Role | Scored On |
-|---|---|---|
-| Routing Agent | Classifies intent into 5 categories | Classification accuracy, edge-case handling |
-| RAG Agent | Retrieves grounded context from FAISS knowledge base | Retrieval precision, hallucination rate |
-| Response Agent | Synthesizes context into customer-facing response | Response quality, tone, escalation accuracy |
 
 ---
 
 ## Quickstart
 
-### Prerequisites
-- Python 3.11+
-- AWS account with Bedrock access (Claude Sonnet + Titan Embeddings)
-- AWS credentials configured via `aws configure`
-
-### Install
-
 ```bash
-git clone https://github.com/parthmalpathak/cascade.git
-cd cascade
-pip install -r requirements.txt
-cp .env.example .env
-```
+# Install dependencies
+pip install -e .
 
-### Run the reference pipeline
-
-```bash
-# 1. Generate test suite (requires Bedrock access)
+# 1. Generate test suite (requires ANTHROPIC_API_KEY)
 python -m query_agent.generator --workflow workflows/customer_support/workflow.yaml
 
-# 2. Run benchmark
-python -m eval.runner --workflow workflows/customer_support/workflow.yaml
+# 2. Run benchmark — Anthropic API
+python -m eval.runner \
+  --workflow workflows/customer_support/workflow.yaml \
+  --provider anthropic \
+  --model claude-sonnet-4-6
 
-# 3. View results
+# 2. Run benchmark — Bedrock (requires AWS credentials)
+python -m eval.runner \
+  --workflow workflows/customer_support/workflow.yaml \
+  --provider bedrock \
+  --model us.anthropic.claude-sonnet-4-6
+
+# 3. Score and generate report
+python -m eval.scorer
+python -m eval.report
+
+# 4. View leaderboard
 streamlit run dashboard/app.py
 ```
 
----
+To run all model combinations automatically:
 
-## Adding Your Own Workflow
-
-Cascade is designed for any pipeline. You only need two things:
-
-**1. A `workflow.yaml`** describing your agents and their chain:
-
-```yaml
-name: my-pipeline
-mode: high_code          # high_code (bring your own pipeline/) or no_code
-pipeline_entrypoint: "workflows.my_pipeline.pipeline.pipeline:run_pipeline"
-
-agents:
-  - id: agent_one
-    manifest: manifests/agent_one.json
-    position: 1
-  - id: agent_two
-    manifest: manifests/agent_two.json
-    position: 2
-
-chain:
-  entry: agent_one
-  flow:
-    - from: agent_one
-      to: agent_two
-      passes: [field_a, field_b]
-  terminal: agent_two
+```bash
+python -m eval.scheduler --yes
 ```
-
-**2. A manifest JSON per agent** describing its role and contract:
-
-```json
-{
-  "agent_id": "agent_one",
-  "platform": "langgraph",
-  "role_description": "What this agent does and why it matters.",
-  "system_prompt": "The full system prompt — copied verbatim from your platform.",
-  "input_schema": { "query": "string" },
-  "output_schema": { "result": "string" },
-  "constraints": ["Must return valid JSON"],
-  "eval_focus": ["Accuracy on edge cases"]
-}
-```
-
-For **no-code workflows** (Custom GPTs, Copilot agents): set `mode: no_code` and drop knowledge files in `data/`. No pipeline code needed — the Generic Agent Executor builds and runs equivalent agents from your manifests automatically.
-
-For **high-code workflows** (LangGraph, custom Python): set `mode: high_code`, add your `pipeline/` directory with a `run_pipeline(query, task_id) -> dict` entry point.
-
-Place your workflow under `workflows/<your-workflow-name>/` following the same structure as `workflows/customer_support/`.
 
 ---
 
@@ -127,8 +61,9 @@ Place your workflow under `workflows/<your-workflow-name>/` following the same s
 
 ```
 cascade/
-├── README.md
+├── model_client.py             ← provider-agnostic LLM + embeddings (Anthropic / OpenAI / Bedrock)
 ├── requirements.txt
+├── pyproject.toml
 ├── .env.example
 │
 ├── docs/
@@ -139,48 +74,77 @@ cascade/
 ├── workflows/                  ← one subdirectory per pipeline
 │   └── customer_support/       ← reference implementation
 │       ├── workflow.yaml       ← agent chain definition
-│       ├── manifests/          ← one JSON per agent
+│       ├── manifests/          ← one JSON manifest per agent
 │       ├── pipeline/           ← LangGraph implementation
+│       │   ├── routing_agent.py
+│       │   ├── rag_agent.py
+│       │   ├── response_agent.py
+│       │   ├── pipeline.py
+│       │   └── state.py
 │       └── data/
 │           └── knowledge_base/ ← FAISS source documents
 │
 ├── query_agent/
-│   └── generator.py            ← generates task suite from workflow + manifests
+│   └── generator.py            ← generates task suite from workflow + manifests (Anthropic API)
 │
 ├── eval/
-│   ├── runner.py               ← fires tasks through pipeline, captures outputs
-│   ├── scorer.py               ← Pass@k scoring logic
+│   ├── runner.py               ← fires tasks through pipeline, captures per-stage outputs
 │   ├── grader.py               ← rule-based + LLM judge scoring per task
-│   ├── rubrics.py              ← partial credit and compliance tier logic
-│   ├── report.py               ← generates scorecard JSON / markdown
-│   └── scheduler.py            ← orchestrates multi-model benchmark runs
+│   ├── scorer.py               ← Pass@k, pipeline composite, compliance scoring
+│   ├── rubrics.py              ← single source of truth: PASS_THRESHOLD, DIMENSION_WEIGHTS, COMPLIANCE_WEIGHTS
+│   ├── report.py               ← generates scorecard JSON + markdown
+│   └── scheduler.py            ← orchestrates multi-model benchmark runs (parallel, checkpointed)
 │
 ├── dashboard/
 │   └── app.py                  ← Streamlit leaderboard
 │
-├── tasks/                      ← approved task suites (versioned, human-reviewed)
-│
-└── results/                    ← raw run output (gitignored)
+├── tasks/                      ← approved task suites (versioned, human-reviewed JSON)
+├── results/                    ← run outputs and scorecards (gitignored)
+└── tests/
+    └── test_scorer.py          ← pytest unit tests (34 tests)
 ```
 
 ---
 
-## Evaluation Pillars
+## Providers
 
-**Pillar 1 — Task Accuracy**
-- Pass@1: did the agent complete the task correctly on the first attempt?
-- Pass@3: did it succeed within 3 attempts?
-- Partial credit scoring with confidence intervals
-- Measured per-stage and as a pipeline composite
+Cascade supports three providers for pipeline inference:
 
-**Pillar 2 — Safety / Compliance**
-- 3-tier compliance battery: baseline / values-block / intervention
-- Adversarial and edge-case prompt battery per stage
-- Pipeline-level compliance score
-- Verdict: SHIP / CONDITIONAL / HOLD
+| Provider | Flag | Models | Embeddings |
+|---|---|---|---|
+| Anthropic API | `--provider anthropic` | `claude-sonnet-4-6`, etc. | Not supported (use Bedrock or OpenAI) |
+| AWS Bedrock | `--provider bedrock` | `us.anthropic.claude-sonnet-4-6`, etc. | `amazon.titan-embed-text-v1` |
+| OpenAI | `--provider openai` | `gpt-4o`, `gpt-4-turbo`, etc. | `text-embedding-3-small` |
+
+The **Query Agent** (task suite generator) and **LLM grader judge** always use the Anthropic API directly — `ANTHROPIC_API_KEY` is required regardless of which provider you benchmark against.
+
+---
+
+## Adding Your Own Workflow
+
+Cascade is pipeline-agnostic. To benchmark your own workflow:
+
+1. Create `workflows/<your-workflow>/workflow.yaml` — declare your agent chain
+2. Create `workflows/<your-workflow>/manifests/<agent>.json` per agent — describe role, prompts, I/O schema
+3. For **high-code pipelines** (LangGraph, custom Python): add a `pipeline/` directory with a `run_pipeline(query, task_id, model_config) -> dict` entrypoint and set `mode: high_code` in `workflow.yaml`
+4. Run `python -m query_agent.generator --workflow workflows/<your-workflow>/workflow.yaml`
+5. Review and approve the generated task suite
+6. Run `python -m eval.runner --workflow workflows/<your-workflow>/workflow.yaml`
+
+See `workflows/customer_support/` as the reference.
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+All 34 tests should pass. Tests cover: routing scoring, retrieval scoring (including edge cases), coverage scoring, safety scoring, escalation scoring, composite calculation, and pass@k logic.
 
 ---
 
 ## Author
 
-Parth Malpathak
+Parth Malpathak — [parthmalpathak@gmail.com](mailto:parthmalpathak@gmail.com)

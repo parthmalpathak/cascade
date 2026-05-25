@@ -31,12 +31,12 @@ A model with 89% accuracy at each of 3 stages produces ~72% end-to-end. The casc
 
 | Model | Routing | Retrieval | Response | Pipeline ★ | Compliance | Verdict |
 |-------|---------|-----------|----------|------------|------------|---------|
-| Claude 3.5 Sonnet | 94% | 88% | 91% | **82%** | 89% | SHIP |
-| GPT-4o | 96% | 79% | 88% | **74%** | 81% | CONDITIONAL |
-| Gemini 1.5 Pro | 89% | 85% | 83% | **72%** | 76% | CONDITIONAL |
-| Llama 3 70B | 81% | 74% | 79% | **58%** | 61% | HOLD |
+| Claude Sonnet 4.6 | — | — | — | — | — | pending |
+| GPT-4o | — | — | — | — | — | pending |
 
-*Pipeline score = product of stage scores, not average. This is intentional.*
+*First benchmark run in progress. Numbers will be published here once the task suite is approved and executed.*
+
+*Pipeline score = product of stage scores, not average — errors compound across stages.*
 
 ---
 
@@ -82,27 +82,30 @@ This pipeline is the proof-of-concept. Use it as a working example, or replace i
 
 Cascade is agent-agnostic. To benchmark your own multi-agent workflow:
 
-1. Write an `agent_manifest.json` for each agent (see `cascade/manifests/` for examples)
+1. Write an `agent_manifest.json` for each agent (see `cascade/workflows/customer_support/manifests/` for examples)
 2. Write a `workflow.yaml` declaring the agent chain and data flow
-3. Run the Query Agent to generate your test suite
-4. Configure `run_config.yaml` with your model choices
-5. Run `cascade eval`
+3. Run `python -m query_agent.generator` to generate your test suite (requires `ANTHROPIC_API_KEY`)
+4. Run `python -m eval.runner --provider <anthropic|openai|bedrock> --model <model-id>`
+5. View results: `streamlit run cascade/dashboard/app.py`
 
 ---
 
 ## Repo Structure
 
 ```
-cascade/
-├── manifests/           ← agent_manifest.json per agent (the plug-in contract)
-├── workflow.yaml        ← declares agent chain and data flow
-├── pipeline/            ← reference implementation (LangGraph + AWS Bedrock)
-├── query_agent/         ← generates task_suite.json from manifests
-├── tasks/               ← versioned test suites + schema spec
-├── eval/                ← runner, grader, scorer, scheduler
-├── results/             ← run outputs and leaderboard data (gitignored)
-├── dashboard/           ← Streamlit leaderboard (local)
-└── tests/               ← pytest unit tests
+cascade/                         ← all runnable code lives here
+├── model_client.py              ← provider-agnostic LLM + embeddings (Anthropic / OpenAI / Bedrock)
+├── workflows/
+│   └── customer_support/        ← reference implementation
+│       ├── workflow.yaml        ← agent chain definition
+│       ├── manifests/           ← one JSON manifest per agent
+│       └── pipeline/            ← LangGraph implementation (routing → RAG → response)
+├── query_agent/                 ← generates task suite from manifests (Anthropic API)
+├── tasks/                       ← versioned test suites, human-reviewed
+├── eval/                        ← runner, grader, scorer, rubrics, scheduler, report
+├── results/                     ← run outputs and scorecards (gitignored)
+├── dashboard/                   ← Streamlit leaderboard
+└── tests/                       ← pytest unit tests (34 tests)
 ```
 
 ---
