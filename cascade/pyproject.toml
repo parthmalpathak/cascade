@@ -7,4 +7,24 @@ name = "cascade-bench"
 version = "0.1.0"
 description = "Agent-agnostic LLM pipeline benchmarking framework"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",
+    "langgraph>=0.2",
+    "langchain-aws>=0.2",
+    "langchain-community>=0.3",
+    "langchain-core>=0.3",
+    "langchain-openai>=0.2",
+    "boto3>=1.35",
+    "anthropic>=0.40",
+    "openai>=1.50",
+    "faiss-cpu>=1.8",
+    "streamlit>=1.38",
+    "pandas>=2.0",
+    "numpy>=1.26",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

@@ -17,6 +17,7 @@ from eval.grader import (
     _composite,
     _score_coverage,
     _score_escalation,
+    _score_retrieval,
     _score_routing,
     _score_safety,
     grade_task,
@@ -191,6 +192,61 @@ class TestScoreSafety:
         pc = {"response_must_not_contain": []}
         run = {"response": "Hello"}
         assert _score_safety(pc, run) is None
+
+
+# ── _score_retrieval ──────────────────────────────────────────────────────────
+
+class TestScoreRetrieval:
+    def test_sentinel_negative_one_returns_none(self):
+        # query_agent uses -1.0 to signal "not applicable for this task"
+        pc = {"retrieval_min_precision": -1.0}
+        run = {"retrieval_scores": [0.8, 0.7]}
+        assert _score_retrieval(pc, run) is None
+
+    def test_none_min_precision_returns_none(self):
+        pc = {"retrieval_min_precision": None}
+        run = {"retrieval_scores": [0.8]}
+        assert _score_retrieval(pc, run) is None
+
+    def test_missing_min_precision_returns_none(self):
+        pc = {}
+        run = {"retrieval_scores": [0.8]}
+        assert _score_retrieval(pc, run) is None
+
+    def test_zero_min_precision_returns_none(self):
+        # Zero would cause div-by-zero — guard must return None
+        pc = {"retrieval_min_precision": 0}
+        run = {"retrieval_scores": [0.8]}
+        assert _score_retrieval(pc, run) is None
+
+    def test_empty_scores_returns_zero(self):
+        pc = {"retrieval_min_precision": 0.8}
+        run = {"retrieval_scores": []}
+        assert _score_retrieval(pc, run) == 0.0
+
+    def test_none_scores_returns_zero(self):
+        pc = {"retrieval_min_precision": 0.8}
+        run = {"retrieval_scores": None}
+        assert _score_retrieval(pc, run) == 0.0
+
+    def test_scores_at_threshold_returns_one(self):
+        # avg = 0.8, min_precision = 0.8 → score = 1.0
+        pc = {"retrieval_min_precision": 0.8}
+        run = {"retrieval_scores": [0.8, 0.8]}
+        assert _score_retrieval(pc, run) == 1.0
+
+    def test_scores_above_threshold_capped_at_one(self):
+        # avg = 0.9, min_precision = 0.7 → 0.9/0.7 > 1.0, should be capped at 1.0
+        pc = {"retrieval_min_precision": 0.7}
+        run = {"retrieval_scores": [0.9, 0.9]}
+        assert _score_retrieval(pc, run) == 1.0
+
+    def test_scores_below_threshold_partial_credit(self):
+        # avg = 0.5, min_precision = 0.8 → 0.5/0.8 = 0.625
+        pc = {"retrieval_min_precision": 0.8}
+        run = {"retrieval_scores": [0.5, 0.5]}
+        expected = round(0.5 / 0.8, 4)
+        assert _score_retrieval(pc, run) == expected
 
 
 # ── _score_escalation ─────────────────────────────────────────────────────────
